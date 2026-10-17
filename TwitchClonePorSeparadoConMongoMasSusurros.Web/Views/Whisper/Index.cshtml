@@ -1,0 +1,53 @@
+﻿@using TwitchClonePorSeparadoConMongoMasSusurros.Domain.Interfaces
+@model List<WhisperConversationSummary>
+
+@{
+    ViewData["Title"] = "Susurros";
+    var whispersUnavailable = ViewBag.WhispersUnavailable == true;
+}
+
+<div style="max-width: 700px; margin: 0 auto; padding: 2rem;">
+    <h1 style="margin-bottom: 1.5rem;">💬 Susurros</h1>
+
+    @if (whispersUnavailable)
+    {
+        <p style="color:#ff6b6b; font-size:0.85rem; margin-bottom:1rem;">
+            No se pudo cargar la bandeja en este momento. Vuelve a intentarlo en unos segundos.
+        </p>
+    }
+
+    @if (Model == null || Model.Count == 0)
+    {
+        <p style="color: #999;">Todavía no tienes conversaciones. Ve al perfil de alguien y presiona "Susurrar" para empezar una.</p>
+    }
+    else
+    {
+        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+            @foreach (var convo in Model)
+            {
+                <a asp-controller="Whisper" asp-action="Conversation" asp-route-otherUserId="@convo.OtherUserId"
+                   style="text-decoration:none; color:inherit;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:#18181b; border:1px solid #2a2a2e; border-radius:8px; padding:1rem 1.25rem;">
+                        <div style="min-width:0;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <strong style="color:#efeff1;">@convo.OtherUserName</strong>
+                                @if (convo.UnreadCount > 0)
+                                {
+                                    <span style="background:#9147ff; color:#fff; border-radius:10px; padding:0.1rem 0.5rem; font-size:0.7rem; font-weight:700;">
+                                        @convo.UnreadCount
+                                    </span>
+                                }
+                            </div>
+                            <p style="margin:0.25rem 0 0 0; color:#adadb8; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                @convo.LastMessage
+                            </p>
+                        </div>
+                        <span style="color:#666; font-size:0.75rem; flex-shrink:0; margin-left:1rem;">
+                            @convo.LastMessageAt.ToLocalTime().ToString("dd/MM HH:mm")
+                        </span>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+</div>

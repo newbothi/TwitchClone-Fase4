@@ -1,0 +1,97 @@
+﻿@using Microsoft.AspNetCore.Html
+@model List<TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Channel>
+
+@{
+    ViewData["Title"] = "Buscar";
+    string query = ViewBag.Query ?? "";
+
+    // Envuelve cada coincidencia del texto buscado en <mark> para resaltarla.
+    // Comparación case-insensitive, preserva may/minúsculas originales del texto.
+    Func<string?, IHtmlContent> highlight = (text) =>
+    {
+        if (string.IsNullOrEmpty(text) || string.IsNullOrWhiteSpace(query))
+            return new HtmlString(System.Net.WebUtility.HtmlEncode(text ?? ""));
+
+        var index = text.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+            return new HtmlString(System.Net.WebUtility.HtmlEncode(text));
+
+        var before = System.Net.WebUtility.HtmlEncode(text.Substring(0, index));
+        var match = System.Net.WebUtility.HtmlEncode(text.Substring(index, query.Length));
+        var after = System.Net.WebUtility.HtmlEncode(text.Substring(index + query.Length));
+
+        return new HtmlString($"{before}<mark style=\"background:#9147ff; color:#fff; border-radius:3px; padding:0 2px;\">{match}</mark>{after}");
+    };
+}
+
+<div style="max-width: 1100px; margin: 0 auto; padding: 2rem;">
+    <h1 style="margin-bottom: 1.5rem;">🔍 Búsqueda</h1>
+
+    <form method="get" style="margin-bottom: 2rem;">
+        <div style="display: flex; gap: 0.5rem;">
+            <input type="text" name="q" value="@ViewBag.Query" placeholder="Buscar streamers o canales..."
+                   style="flex: 1; box-sizing:border-box; background:#18181b; border: 1px solid #2a2a2e; color:#efeff1; padding: 0.7rem 1rem; border-radius: 6px; font-size: 0.95rem;" />
+            <button type="submit" style="background: #9147ff; color: #fff; border: none; padding: 0.7rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                Buscar
+            </button>
+        </div>
+    </form>
+
+    @if (string.IsNullOrEmpty(ViewBag.Query))
+    {
+        <p style="color: #999;">Escribe el nombre de un streamer o un canal para empezar a buscar.</p>
+    }
+    else if (Model.Count == 0)
+    {
+        <p style="color: #999;">No se encontraron streamers ni canales con "<strong>@ViewBag.Query</strong>".</p>
+    }
+    else
+    {
+        <p style="color: #adadb8; margin-bottom: 1.5rem;">
+            @if (ViewBag.ShowingAll == true)
+            {
+                <text>Mostrando los <strong>@ViewBag.ResultCount</strong> resultados.</text>
+            }
+            else
+            {
+                <text>Mostrando <strong>@ViewBag.ResultCount</strong> de <strong>@ViewBag.TotalMatches</strong> resultados.</text>
+            }
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem;">
+            @foreach (var channel in Model)
+            {
+                <a asp-controller="Channel" asp-action="Watch" asp-route-id="@channel.Id"
+                   style="text-decoration: none; color: inherit;">
+                    <div style="border: 1px solid #2a2a2e; border-radius: 8px; overflow: hidden; background:#18181b;">
+                        <div style="height: 130px; background:#0e0e10; display:flex; align-items:center; justify-content:center; color:#666; font-size:2rem; position:relative;">
+                            @if (channel.IsLive)
+                            {
+                                <span style="position:absolute; top:0.5rem; left:0.5rem; background:#e91916; color:#fff; padding:0.2rem 0.6rem; border-radius:4px; font-size:0.7rem; font-weight:700;">
+                                    🔴 EN VIVO
+                                </span>
+                            }
+                            📹
+                        </div>
+                        <div style="padding: 0.75rem 1rem;">
+                            <h3 style="margin: 0 0 0.25rem 0; font-size: 1rem;">@highlight(channel.Name)</h3>
+                            <p style="margin: 0; color: #adadb8; font-size: 0.85rem;">@highlight(channel.User?.DisplayUsername)</p>
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+
+        @if (ViewBag.HasMore == true)
+        {
+            <div style="text-align:center; margin-top: 2rem;">
+                <a asp-controller="Search" asp-action="Index" asp-route-q="@ViewBag.Query" asp-route-all="true"
+                   target="_blank"
+                   style="display:inline-block; background:#18181b; border:1px solid #2a2a2e; color:#9147ff; text-decoration:none; padding:0.65rem 1.5rem; border-radius:6px; font-weight:600; font-size:0.9rem;">
+                    Ver más resultados (@ViewBag.TotalMatches en total) →
+                </a>
+            </div>
+        }
+    }
+</div>
+

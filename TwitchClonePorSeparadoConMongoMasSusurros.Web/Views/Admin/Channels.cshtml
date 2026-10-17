@@ -1,0 +1,74 @@
+﻿@using TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models
+@{
+    ViewData["Title"] = "Canales";
+    var channels = ViewBag.Channels as List<Channel> ?? new List<Channel>();
+}
+
+<div style="max-width: 1100px; margin: 0 auto; padding: 2rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h1 style="margin:0;">📺 Canales</h1>
+        <a asp-controller="Admin" asp-action="Index" style="color:#9147ff; text-decoration:none; font-size:0.9rem;">&larr; Volver al panel</a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <p style="color:#3fb950; margin-bottom:1rem;">@TempData["Success"]</p>
+    }
+
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse: collapse; background:#18181b; border:1px solid #2a2a2e; border-radius:8px; overflow:hidden;">
+            <thead>
+                <tr style="background:#0e0e10; text-align:left;">
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Canal</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Streamer</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Categoría</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Estado</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Viewers</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var channel in channels)
+                {
+                    <tr style="border-top:1px solid #2a2a2e;">
+                        <td style="padding:0.75rem 1rem;">@channel.Name</td>
+                        <td style="padding:0.75rem 1rem; color:#adadb8;">@(channel.User?.DisplayUsername ?? "—")</td>
+                        <td style="padding:0.75rem 1rem; color:#adadb8;">@(channel.Category?.Name ?? "Sin categoría")</td>
+                        <td style="padding:0.75rem 1rem;">
+                            @if (channel.IsLive)
+                            {
+                                <span style="color:#3fb950;">🔴 En vivo</span>
+                            }
+                            else
+                            {
+                                <span style="color:#adadb8;">Desconectado</span>
+                            }
+                        </td>
+                        <td style="padding:0.75rem 1rem; color:#adadb8;">@channel.ViewerCount</td>
+                        <td style="padding:0.75rem 1rem;">
+                            @if (channel.IsLive)
+                            {
+                                @* El estado EN VIVO lo decide MediaMTX; un admin solo puede cortar la transmisión. *@
+                                <form asp-controller="Admin" asp-action="EndStream" method="post" style="display:inline;"
+                                      onsubmit="return confirm('¿Cortar la transmisión de este canal? OBS será desconectado.');">
+                                    <input type="hidden" name="channelId" value="@channel.Id" />
+                                    <button type="submit" style="background:transparent; border:1px solid #ff6b6b; color:#ff6b6b; border-radius:4px; padding:0.25rem 0.6rem; cursor:pointer; font-size:0.8rem;">
+                                        Terminar transmisión
+                                    </button>
+                                </form>
+                            }
+                            <a asp-controller="Channel" asp-action="Watch" asp-route-id="@channel.Id"
+                               style="color:#9147ff; text-decoration:none; font-size:0.8rem; margin-left:0.5rem;">
+                                Ver
+                            </a>
+                            <a asp-controller="Simulator" asp-action="Index"
+                               style="color:#3fb950; text-decoration:none; font-size:0.8rem; margin-left:0.5rem;">
+                                Simular
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,115 @@
+﻿@model TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Channel
+
+@{
+    ViewData["Title"] = ViewBag.User.DisplayUsername + " - Perfil";
+}
+
+<div style="max-width: 1000px; margin: 0 auto; padding: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="margin: 0 0 0.5rem 0;">@ViewBag.User.DisplayUsername</h1>
+            @if (Model != null && Model.IsLive)
+            {
+                <span style="background: #e91916; color: #fff; padding: 0.3rem 0.75rem; border-radius: 4px; font-size: 0.85rem; font-weight: 700;">🔴 EN VIVO</span>
+            }
+        </div>
+
+        @if (!ViewBag.IsOwnProfile && User.Identity?.IsAuthenticated == true)
+        {
+            <button id="follow-btn" onclick="toggleFollow(@Model.Id)"
+                    style="background: #9147ff; color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                Seguir
+            </button>
+        }
+    </div>
+
+    @if (Model != null)
+    {
+        <div style="background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; text-align: center;">
+                <div>
+                    <p style="color: #666; margin: 0 0 0.5rem 0;">Seguidores</p>
+                    <p style="color: #9147ff; font-size: 1.5rem; font-weight: 700; margin: 0;">@ViewBag.FollowerCount</p>
+                </div>
+                <div>
+                    <p style="color: #666; margin: 0 0 0.5rem 0;">Clips</p>
+                    <p style="color: #9147ff; font-size: 1.5rem; font-weight: 700; margin: 0;">0</p>
+                </div>
+                <div>
+                    <p style="color: #666; margin: 0 0 0.5rem 0;">Estado</p>
+                    <p style="color: #9147ff; font-size: 1.5rem; font-weight: 700; margin: 0;">@(Model.IsLive ? "EN VIVO" : "OFFLINE")</p>
+                </div>
+            </div>
+        </div>
+
+        <h2>Descripción</h2>
+        <p style="color: #666;">@(string.IsNullOrEmpty(Model.Description) ? "Sin descripción" : Model.Description)</p>
+
+        @if (ViewBag.IsOwnProfile)
+        {
+            <a href="@Url.Action("Dashboard", "Channel")" style="background: #9147ff; color: #fff; padding: 0.6rem 1.2rem; border-radius: 4px; text-decoration: none; display: inline-block;">
+                Ir al Dashboard
+            </a>
+        }
+        else if (Model.IsLive)
+        {
+            <a href="@Url.Action("Watch", "Channel", new { id = Model.Id })"
+               style="background: #e91916; color: #fff; padding: 0.6rem 1.2rem; border-radius: 4px; text-decoration: none; display: inline-block;">
+                Ver en vivo
+            </a>
+        }
+    }
+
+    @if (ViewBag.Follows != null && ViewBag.Follows.Count > 0)
+    {
+        <h2 style="margin-top: 3rem;">Canales que sigue (@ViewBag.Follows.Count)</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+            @foreach (var follow in ViewBag.Follows)
+            {
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; cursor: pointer;"
+                     onclick="location.href='@Url.Action("Watch", "Channel", new { id = follow.Channel.Id })'">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem;">@follow.Channel.Name</h3>
+                    @if (follow.Channel.IsLive)
+                    {
+                        <span style="color: #e91916; font-weight: 700; font-size: 0.85rem;">🔴 EN VIVO</span>
+                    }
+                    else
+                    {
+                        <span style="color: #999; font-size: 0.85rem;">⚫ Offline</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        async function toggleFollow(channelId) {
+            const btn = document.getElementById("follow-btn");
+            const response = await fetch(`/api/follow/toggle/${channelId}`, { method: 'POST' });
+            const data = await response.json();
+
+            if (data.followed) {
+                btn.textContent = "Dejar de seguir";
+                btn.style.background = "#2a2a2e";
+            } else {
+                btn.textContent = "Seguir";
+                btn.style.background = "#9147ff";
+            }
+        }
+
+        // Cargar estado inicial del botón
+        window.addEventListener('load', async () => {
+            const channelId = @Model.Id;
+            const response = await fetch(`/api/follow/status/${channelId}`);
+            const data = await response.json();
+
+            if (data.followed) {
+                const btn = document.getElementById("follow-btn");
+                btn.textContent = "Dejar de seguir";
+                btn.style.background = "#2a2a2e";
+            }
+        });
+    </script>
+}

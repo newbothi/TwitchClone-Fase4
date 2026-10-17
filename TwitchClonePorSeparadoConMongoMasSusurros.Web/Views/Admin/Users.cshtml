@@ -1,0 +1,90 @@
+﻿@using TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models
+@{
+    ViewData["Title"] = "Usuarios";
+    var users = ViewBag.Users as List<AppUser> ?? new List<AppUser>();
+}
+
+<div style="max-width: 1100px; margin: 0 auto; padding: 2rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h1 style="margin:0;">👥 Usuarios</h1>
+        <a asp-controller="Admin" asp-action="Index" style="color:#9147ff; text-decoration:none; font-size:0.9rem;">&larr; Volver al panel</a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <p style="color:#3fb950; margin-bottom:1rem;">@TempData["Success"]</p>
+    }
+
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse: collapse; background:#18181b; border:1px solid #2a2a2e; border-radius:8px; overflow:hidden;">
+            <thead>
+                <tr style="background:#0e0e10; text-align:left;">
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Usuario</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Email</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Canal</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Estado</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Rol</th>
+                    <th style="padding:0.75rem 1rem; font-size:0.8rem; color:#adadb8;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    var isBanned = user.LockoutEnd != null && user.LockoutEnd > DateTimeOffset.Now;
+                    <tr style="border-top:1px solid #2a2a2e;">
+                        <td style="padding:0.75rem 1rem;">@user.DisplayUsername</td>
+                        <td style="padding:0.75rem 1rem; color:#adadb8;">@user.Email</td>
+                        <td style="padding:0.75rem 1rem; color:#adadb8;">@(user.Channel?.Name ?? "—")</td>
+                        <td style="padding:0.75rem 1rem;">
+                            @if (isBanned)
+                            {
+                                <span style="color:#ff6b6b;">Baneado</span>
+                            }
+                            else
+                            {
+                                <span style="color:#3fb950;">Activo</span>
+                            }
+                        </td>
+                        <td style="padding:0.75rem 1rem;">
+                            <form asp-controller="Admin" asp-action="ChangeUserRole" method="post" style="display:flex; gap:0.4rem;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="userId" value="@user.Id" />
+                                <select name="role" style="background:#0e0e10; border:1px solid #2a2a2e; color:#efeff1; border-radius:4px; padding:0.25rem;">
+                                    <option value="Viewer">Viewer</option>
+                                    <option value="Streamer">Streamer</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                                <button type="submit" style="background:transparent; border:1px solid #2a2a2e; color:#adadb8; border-radius:4px; padding:0.25rem 0.6rem; cursor:pointer; font-size:0.8rem;">
+                                    Aplicar
+                                </button>
+                            </form>
+                        </td>
+                        <td style="padding:0.75rem 1rem;">
+                            @if (isBanned)
+                            {
+                                <form asp-controller="Admin" asp-action="UnbanUser" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@user.Id" />
+                                    <button type="submit" style="background:transparent; border:1px solid #3fb950; color:#3fb950; border-radius:4px; padding:0.25rem 0.6rem; cursor:pointer; font-size:0.8rem;">
+                                        Desbanear
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-controller="Admin" asp-action="BanUser" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@user.Id" />
+                                    <input type="hidden" name="reason" value="Baneado por administrador" />
+                                    <button type="submit" style="background:transparent; border:1px solid #ff6b6b; color:#ff6b6b; border-radius:4px; padding:0.25rem 0.6rem; cursor:pointer; font-size:0.8rem;">
+                                        Banear
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

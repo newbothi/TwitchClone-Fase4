@@ -1,0 +1,206 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - TwitchClone</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body style="background:#0e0e10; color:#efeff1; margin:0; font-family: Inter, sans-serif;">
+
+    <!-- NAVBAR -->
+    <nav style="background:#18181b; border-bottom:1px solid #2a2a2e; padding:0 1.5rem; height:50px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100;">
+
+        <!-- Logo -->
+        <a asp-controller="Home" asp-action="Index"
+           style="color:#9147ff; font-weight:800; font-size:1.2rem; text-decoration:none; flex-shrink:0;">
+            🎮 TwitchClone
+        </a>
+
+        <!-- Buscador de streamers/canales -->
+        <form asp-controller="Search" asp-action="Index" method="get"
+              style="flex:1; max-width:420px; margin:0 1.5rem; position:relative;">
+            <input type="text" name="q" id="navbar-search-input" autocomplete="off"
+                   value="@Context.Request.Query["q"]"
+                   placeholder="Buscar streamers o canales..."
+                   style="width:100%; box-sizing:border-box; background:#0e0e10; border:1px solid #2a2a2e; color:#efeff1; padding:0.45rem 0.9rem; border-radius:18px; font-size:0.85rem;" />
+            <div id="navbar-search-suggestions"
+                 style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#18181b; border:1px solid #2a2a2e; border-radius:8px; overflow:hidden; z-index:200; max-height:340px; overflow-y:auto;">
+            </div>
+        </form>
+
+        <!-- Nav links -->
+        <div style="display:flex; align-items:center; gap:1.5rem; flex-shrink:0;">
+            @if (User.Identity!.IsAuthenticated)
+            {
+                <span style="color:#adadb8; font-size:0.85rem;">
+                    Hola, <strong style="color:#efeff1;">@User.Identity.Name</strong>
+                </span>
+
+                <a asp-controller="User" asp-action="Profile"
+                   asp-route-username="@User.Identity.Name"
+                   style="color:#adadb8; text-decoration:none; font-size:0.9rem;">
+                    👤 Mi perfil
+                </a>
+
+                <a asp-controller="User" asp-action="EditProfile"
+                   style="color:#adadb8; text-decoration:none; font-size:0.9rem;">
+                    ✏️ Editar perfil
+                </a>
+
+                <a asp-controller="Whisper" asp-action="Index"
+                   style="color:#adadb8; text-decoration:none; font-size:0.9rem; position:relative;">
+                    💬 Susurros
+                    <span id="whisper-unread-badge" style="display:none; background:#e91916; color:#fff; border-radius:8px; padding:0 0.4rem; font-size:0.7rem; font-weight:700; margin-left:0.25rem;"></span>
+                </a>
+
+                @if (User.IsInRole("Streamer"))
+                {
+                    <a asp-controller="Channel" asp-action="Dashboard"
+                       style="color:#adadb8; text-decoration:none; font-size:0.9rem;">
+                        🎙️ Mi canal
+                    </a>
+                }
+
+                <a asp-controller="Donation" asp-action="MyPoints"
+                   style="color:#adadb8; text-decoration:none; font-size:0.9rem;">
+                    💰 Mis puntos
+                </a>
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <a asp-controller="Admin" asp-action="Index"
+                       style="color:#ff6b6b; text-decoration:none; font-size:0.9rem;">
+                        ⚙️ Admin
+                    </a>
+                }
+
+                <form asp-controller="Account" asp-action="Logout" method="post" style="margin:0;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit"
+                            style="background:transparent; border:1px solid #2a2a2e; color:#adadb8; padding:0.35rem 0.75rem; border-radius:5px; cursor:pointer; font-size:0.85rem;">
+                        Salir
+                    </button>
+                </form>
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login"
+                   style="color:#adadb8; text-decoration:none; font-size:0.9rem;">
+                    Iniciar sesión
+                </a>
+                <a asp-controller="Account" asp-action="Register"
+                   style="background:#9147ff; color:#fff; text-decoration:none; padding:0.4rem 1rem; border-radius:5px; font-size:0.9rem; font-weight:600;">
+                    Registrarse
+                </a>
+            }
+        </div>
+    </nav>
+
+    <!-- CONTENIDO -->
+    <main>
+        @RenderBody()
+    </main>
+
+    <!-- FOOTER -->
+    <footer style="background:#18181b; border-top:1px solid #2a2a2e; text-align:center; padding:1rem; color:#adadb8; font-size:0.8rem; margin-top:3rem;">
+        &copy; 2026 TwitchClone
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+
+    <script>
+        (function () {
+            const input = document.getElementById("navbar-search-input");
+            const box = document.getElementById("navbar-search-suggestions");
+            if (!input || !box) return;
+
+            let debounceTimer = null;
+
+            function hideSuggestions() {
+                box.style.display = "none";
+                box.innerHTML = "";
+            }
+
+            // El nombre del canal y del streamer los escriben usuarios: se escapan antes
+            // de meterlos en el HTML (antes un canal llamado "<img onerror=...>" ejecutaba código).
+            function esc(value) {
+                return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+            }
+
+            function renderSuggestions(channels) {
+                if (!channels || channels.length === 0) {
+                    hideSuggestions();
+                    return;
+                }
+
+                box.innerHTML = channels.map(c => `
+                    <a href="/Channel/Watch/${encodeURIComponent(c.id)}" style="display:flex; align-items:center; gap:0.6rem; padding:0.6rem 0.9rem; text-decoration:none; color:#efeff1; border-bottom:1px solid #2a2a2e;">
+                        <span>${c.isLive ? "🔴" : "⚫"}</span>
+                        <span style="flex:1; min-width:0;">
+                            <span style="display:block; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c.name)}</span>
+                            <span style="display:block; font-size:0.75rem; color:#adadb8;">${esc(c.streamer)}</span>
+                        </span>
+                    </a>
+                `).join("");
+
+                box.style.display = "block";
+            }
+
+            input.addEventListener("input", () => {
+                const q = input.value.trim();
+                clearTimeout(debounceTimer);
+
+                if (q.length < 2) {
+                    hideSuggestions();
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`/search/api?q=${encodeURIComponent(q)}`)
+                        .then(r => r.ok ? r.json() : [])
+                        .then(renderSuggestions)
+                        .catch(() => hideSuggestions());
+                }, 250);
+            });
+
+            document.addEventListener("click", (e) => {
+                if (!box.contains(e.target) && e.target !== input) {
+                    hideSuggestions();
+                }
+            });
+        })();
+    </script>
+
+    @if (User.Identity!.IsAuthenticated)
+    {
+        <script>
+            (function () {
+                const badge = document.getElementById("whisper-unread-badge");
+                if (!badge) return;
+
+                function refreshUnreadCount() {
+                    fetch("/Whisper/UnreadCount")
+                        .then(r => r.ok ? r.json() : { count: 0 })
+                        .then(data => {
+                            if (data.count > 0) {
+                                badge.textContent = data.count;
+                                badge.style.display = "inline-block";
+                            } else {
+                                badge.style.display = "none";
+                            }
+                        })
+                        .catch(() => {});
+                }
+
+                refreshUnreadCount();
+                setInterval(refreshUnreadCount, 30000); // cada 30s, además del push en vivo dentro de una conversación abierta
+            })();
+        </script>
+    }
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

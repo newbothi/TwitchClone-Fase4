@@ -1,0 +1,186 @@
+﻿@using TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models
+@model List<WhisperMessage>
+
+@{
+    ViewData["Title"] = "Susurro";
+    var otherUser = ViewBag.OtherUser as AppUser;
+    var currentUserId = ViewBag.CurrentUserId as string;
+    var whispersUnavailable = ViewBag.WhispersUnavailable == true;
+}
+
+<div class="whisper-wrapper">
+    <div class="whisper-header">
+        <a asp-controller="Whisper" asp-action="Index" style="color:#9147ff; text-decoration:none; font-size:0.85rem;">← Susurros</a>
+        <h2 style="margin:0.35rem 0 0 0;">@otherUser?.DisplayUsername</h2>
+    </div>
+
+    @if (TempData["WhisperError"] != null)
+    {
+        <p style="color:#ff6b6b; font-size:0.85rem; padding:0 1.5rem;">@TempData["WhisperError"]</p>
+    }
+
+    <div class="whisper-thread" id="whisper-thread">
+        @if (whispersUnavailable)
+        {
+            <p style="color:#ff6b6b; font-size:0.85rem; text-align:center;">
+                No se pudo cargar el historial. Los mensajes nuevos deberían seguir funcionando con normalidad.
+            </p>
+        }
+        @if (Model != null)
+        {
+            @foreach (var msg in Model)
+            {
+                var isMine = msg.SenderId == currentUserId;
+                <div class="whisper-bubble-row @(isMine ? "mine" : "theirs")">
+                    <div class="whisper-bubble">
+                        <span>@msg.Content</span>
+                        <span class="whisper-time">@msg.SentAt.ToLocalTime().ToString("HH:mm")</span>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <form asp-controller="Whisper" asp-action="Send" method="post" class="whisper-input-row">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="recipientId" value="@otherUser?.Id" />
+        <input type="text" name="content" maxlength="500" placeholder="Escribe un susurro..." autocomplete="off" required class="whisper-input" />
+        <button type="submit" class="whisper-send-btn">Enviar</button>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
+    <script>
+        const conversationId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.ConversationId));
+        const currentUserId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentUserId));
+
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/streamHub")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("WhisperReceived", (convoId, senderUserName, content) => {
+            if (convoId !== conversationId) return; // mensaje de otra conversación, no de esta pantalla
+
+            const thread = document.getElementById("whisper-thread");
+            const row = document.createElement("div");
+            row.className = "whisper-bubble-row theirs";
+            row.innerHTML = `<div class="whisper-bubble"><span></span><span class="whisper-time"></span></div>`;
+            row.querySelector("span").textContent = content;
+            row.querySelector(".whisper-time").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            thread.appendChild(row);
+            thread.scrollTop = thread.scrollHeight;
+        });
+
+        connection.start().catch(err => console.error(err));
+
+        // Auto-scroll al fondo al cargar la conversación
+        const thread = document.getElementById("whisper-thread");
+        thread.scrollTop = thread.scrollHeight;
+    </script>
+}
+
+@section Styles {
+    <style>
+        .whisper-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            height: calc(100vh - 50px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .whisper-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #2a2a2e;
+        }
+
+        .whisper-thread {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .whisper-bubble-row {
+            display: flex;
+        }
+
+            .whisper-bubble-row.mine {
+                justify-content: flex-end;
+            }
+
+            .whisper-bubble-row.theirs {
+                justify-content: flex-start;
+            }
+
+        .whisper-bubble {
+            max-width: 75%;
+            background: #18181b;
+            border: 1px solid #2a2a2e;
+            border-radius: 12px;
+            padding: 0.55rem 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+
+            .whisper-bubble-row.mine .whisper-bubble {
+                background: #9147ff;
+                border-color: #9147ff;
+                color: #fff;
+            }
+
+            .whisper-bubble span:first-child {
+                font-size: 0.9rem;
+                word-break: break-word;
+            }
+
+        .whisper-time {
+            font-size: 0.7rem;
+            color: #adadb8;
+            align-self: flex-end;
+        }
+
+            .whisper-bubble-row.mine .whisper-time {
+                color: rgba(255,255,255,0.7);
+            }
+
+        .whisper-input-row {
+            display: flex;
+            gap: 0.6rem;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #2a2a2e;
+        }
+
+        .whisper-input {
+            flex: 1;
+            box-sizing: border-box;
+            background: #0e0e10;
+            border: 1px solid #2a2a2e;
+            color: #efeff1;
+            padding: 0.6rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+            .whisper-input:focus {
+                outline: none;
+                border-color: #9147ff;
+            }
+
+        .whisper-send-btn {
+            background: #9147ff;
+            color: #fff;
+            border: none;
+            padding: 0.55rem 1.3rem;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+    </style>
+}

@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest>=8
+httpx>=0.27
+# Solo para comparar la regresión propia con numpy.polyfit en las pruebas (el servicio no la usa).
+numpy>=1.26

@@ -1,0 +1,45 @@
+﻿@{
+    ViewData["Title"] = "Panel de administración";
+}
+
+<div style="max-width: 1000px; margin: 0 auto; padding: 2rem;">
+    <h1>⚙️ Panel de administración</h1>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0 2rem 0;">
+        <div style="background:#18181b; border:1px solid #2a2a2e; border-radius:8px; padding:1.25rem;">
+            <p style="margin:0; color:#adadb8; font-size:0.8rem;">Usuarios totales</p>
+            <p style="margin:0.25rem 0 0 0; font-size:1.8rem; font-weight:800;">@ViewBag.TotalUsers</p>
+        </div>
+        <div style="background:#18181b; border:1px solid #2a2a2e; border-radius:8px; padding:1.25rem;">
+            <p style="margin:0; color:#adadb8; font-size:0.8rem;">Canales totales</p>
+            <p style="margin:0.25rem 0 0 0; font-size:1.8rem; font-weight:800;">@ViewBag.TotalChannels</p>
+        </div>
+        <div style="background:#18181b; border:1px solid #2a2a2e; border-radius:8px; padding:1.25rem;">
+            <p style="margin:0; color:#adadb8; font-size:0.8rem;">Canales en vivo</p>
+            <p style="margin:0.25rem 0 0 0; font-size:1.8rem; font-weight:800; color:#3fb950;">@ViewBag.LiveChannels</p>
+        </div>
+        <div style="background:#18181b; border:1px solid #2a2a2e; border-radius:8px; padding:1.25rem;">
+            <p style="margin:0; color:#adadb8; font-size:0.8rem;">Donaciones totales</p>
+            <p style="margin:0.25rem 0 0 0; font-size:1.8rem; font-weight:800; color:#9147ff;">@ViewBag.TotalDonations</p>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a asp-controller="Admin" asp-action="Users"
+           style="background:#18181b; border:1px solid #2a2a2e; color:#efeff1; text-decoration:none; padding:0.75rem 1.25rem; border-radius:6px; font-weight:600;">
+            👥 Gestionar usuarios
+        </a>
+        <a asp-controller="Admin" asp-action="Channels"
+           style="background:#18181b; border:1px solid #2a2a2e; color:#efeff1; text-decoration:none; padding:0.75rem 1.25rem; border-radius:6px; font-weight:600;">
+            📺 Gestionar canales
+        </a>
+        <a asp-controller="Category" asp-action="Index"
+           style="background:#18181b; border:1px solid #2a2a2e; color:#efeff1; text-decoration:none; padding:0.75rem 1.25rem; border-radius:6px; font-weight:600;">
+            🗂️ Categorías
+        </a>
+        <a asp-controller="Simulator" asp-action="Index"
+           style="background:#18181b; border:1px solid #2a2a2e; color:#efeff1; text-decoration:none; padding:0.75rem 1.25rem; border-radius:6px; font-weight:600;">
+            🤖 Simulador
+        </a>
+    </div>
+</div>

@@ -1,0 +1,5 @@
+# AutoMod con machine learning (Fase 4). Python 3.10 o superior.
+fastapi>=0.110
+uvicorn>=0.29
+scikit-learn>=1.5
+joblib>=1.3

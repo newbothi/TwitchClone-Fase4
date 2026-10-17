@@ -1,0 +1,100 @@
+###############################################
+# mediamtx.yml — configuración para TwitchClonePorSeparadoConMongoMasSusurros (Fase 1)
+#
+# Reemplaza COMPLETO el mediamtx.yml que viene en el .zip de MediaMTX por este
+# archivo. Probado con MediaMTX v1.21.
+#
+# Qué cambió respecto a la versión anterior:
+#   • La stream key YA NO es parte de la URL pública. Antes los viewers miraban
+#     /live/<StreamKey>/index.m3u8, así que cualquiera podía copiar la clave desde
+#     el código de la página y transmitir en tu canal.
+#   • MediaMTX ahora le PREGUNTA a la app si cada publicación es válida
+#     (authMethod: http). Una clave incorrecta se rechaza antes de llegar al canal.
+#   • Los webhooks son POST con un secreto compartido.
+#
+# Flujo completo:
+#   1. En OBS → Configuración → Emisión → Servicio "Personalizado":
+#        Servidor:              rtmp://localhost/live
+#        Clave de transmisión:  <ID_CANAL>?key=<STREAM_KEY>   (cópiala tal cual del Dashboard)
+#      OBS publica en rtmp://localhost/live/<ID_CANAL>?key=<STREAM_KEY>.
+#   2. MediaMTX llama a POST /api/media/auth con path "live/<ID_CANAL>" y query
+#      "key=<STREAM_KEY>". La app compara la clave y responde 200 (sí) o 401/403 (no).
+#   3. Cuando el stream queda disponible, runOnAvailable avisa a la app → canal EN VIVO.
+#   4. Los viewers miran http://localhost:8888/live/<ID_CANAL>/index.m3u8 (sin clave).
+#   5. Al detener OBS, runOnUnavailable avisa a la app → canal OFFLINE.
+#
+# IMPORTANTE:
+#   • Secreto compartido (secret=... en las 3 URLs de abajo):
+#       - Por defecto la app NO usa secreto (MediaServer:HookSecret vacío) y solo
+#         acepta estas llamadas desde la misma máquina. Así funciona sin tocar nada.
+#       - Para exigirlo, define el mismo valor en la app y aquí:
+#           dotnet user-secrets set "MediaServer:HookSecret" "<valor-largo-al-azar>" --project TwitchClonePorSeparadoConMongoMasSusurros.Web
+#         y reemplaza CAMBIA_ESTE_SECRETO por ese valor. Nunca lo subas a git.
+#   • Si tu app corre en un puerto distinto de 5145, cámbialo en las 3 URLs de abajo
+#     (revisa Properties/launchSettings.json → applicationUrl, la URL http://).
+#   • La app tiene que estar corriendo para que OBS pueda transmitir (MediaMTX le
+#     pregunta por cada publicación). Es el mismo comportamiento que Twitch/Kick.
+###############################################
+
+###############################################
+# Global settings
+
+logLevel: info
+logDestinations: [stdout]
+
+# API de control. La app la usa para expulsar a OBS cuando regeneras la clave
+# o un admin corta una transmisión, y para sincronizar el estado EN VIVO.
+# Solo escucha en localhost.
+api: yes
+apiAddress: 127.0.0.1:9997
+
+###############################################
+# Autenticación delegada a la app
+
+authMethod: http
+authHTTPAddress: http://localhost:5145/api/media/auth?secret=CAMBIA_ESTE_SECRETO
+# La API y las métricas no pasan por la app (ya están limitadas a 127.0.0.1).
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+
+###############################################
+# RTMP server (donde OBS publica)
+
+rtmp: yes
+rtmpAddress: :1935
+
+###############################################
+# HLS server (de donde el reproductor lee el video)
+
+hls: yes
+hlsAddress: :8888
+# Permite que hls.js en http://localhost:5145 lea el HLS desde otro puerto.
+hlsAllowOrigins: ["*"]
+hlsVariant: lowLatency
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+hlsSegmentMaxSize: 50M
+
+###############################################
+# Otros protocolos: desactivados por ahora.
+# Fase 4: SRT (ingesta más robusta desde OBS) y WebRTC/WHIP (latencia < 1 s).
+
+rtsp: no
+webrtc: no
+srt: no
+
+###############################################
+# Hooks hacia la app ($MTX_PATH llega como "live/<ID_CANAL>")
+
+pathDefaults:
+  runOnAvailable: curl -s -X POST "http://localhost:5145/api/media/hooks/available?path=$MTX_PATH&secret=CAMBIA_ESTE_SECRETO"
+  runOnAvailableRestart: no
+  runOnUnavailable: curl -s -X POST "http://localhost:5145/api/media/hooks/unavailable?path=$MTX_PATH&secret=CAMBIA_ESTE_SECRETO"
+
+###############################################
+# paths: cualquier path hereda pathDefaults. La app solo autoriza "live/<número>".
+
+paths:
+  all_others:

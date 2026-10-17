@@ -1,0 +1,71 @@
+## .gitignore para solución .NET / Visual Studio
+## TwitchClonePorSeparadoConMongoMasSusurros
+
+# Carpetas de compilación (se regeneran solas al compilar)
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ll]og/
+[Ll]ogs/
+
+# Carpeta local de Visual Studio (config de usuario, IntelliSense cache,
+# y el archivo applicationhost.config de IIS Express que puede tener
+# datos específicos de tu máquina)
+.vs/
+
+# Archivos de usuario de Visual Studio (preferencias personales, no del proyecto)
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Resultados de pruebas
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# Archivos de publicación
+[Pp]ublish/
+*.pubxml
+*.pubxml.user
+*.azurePubxml
+
+# NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+.nuget/
+
+# Node (si algún día se usa para tooling frontend)
+node_modules/
+
+# Archivos temporales del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Uploads de usuarios en desarrollo local: avatares, banners y emotes que
+# suban usuarios de prueba no deberían versionarse — son datos generados
+# en runtime, no parte del código fuente.
+TwitchClonePorSeparadoConMongoMasSusurros.Web/wwwroot/avatars/*
+!TwitchClonePorSeparadoConMongoMasSusurros.Web/wwwroot/avatars/.gitkeep
+TwitchClonePorSeparadoConMongoMasSusurros.Web/wwwroot/banners/*
+!TwitchClonePorSeparadoConMongoMasSusurros.Web/wwwroot/banners/.gitkeep
+TwitchClonePorSeparadoConMongoMasSusurros.Web/wwwroot/emotes/*
+!TwitchClonePorSeparadoConMongoMasSusurros.Web/wwwroot/emotes/.gitkeep
+
+# Miniaturas generadas por ThumbnailService (Fase 3)
+**/wwwroot/thumbnails/
+
+# Python (Fase 4): entornos virtuales, cachés y datos locales de los servicios
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+python/automod/datos-locales/
+**/.venv.lock

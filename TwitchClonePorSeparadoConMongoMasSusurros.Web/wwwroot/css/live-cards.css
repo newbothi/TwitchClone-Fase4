@@ -1,0 +1,13 @@
+/* Tarjetas de canales en vivo (Inicio y "Canales que sigo"), estilo Twitch. */
+.live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem 1rem; }
+.live-card { display: block; text-decoration: none; color: inherit; }
+.live-card-thumb { position: relative; aspect-ratio: 16 / 9; background: #18181b; border: 1px solid #2a2a2e; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.live-card:hover .live-card-thumb { transform: translate(4px, -4px); box-shadow: -4px 4px 0 #9147ff; }
+.live-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.live-card-placeholder { color: #666; font-size: 2rem; }
+.live-card-badge { position: absolute; top: 8px; left: 8px; background: #eb0400; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 4px; letter-spacing: 0.03em; }
+.live-card-viewers { position: absolute; bottom: 8px; left: 8px; background: rgba(0, 0, 0, 0.75); color: #fff; font-size: 0.75rem; padding: 0.1rem 0.4rem; border-radius: 4px; }
+.live-card-body { padding: 0.55rem 0.1rem 0; }
+.live-card-body h3 { margin: 0; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.live-card-owner { margin: 0.15rem 0 0; color: #adadb8; font-size: 0.85rem; }
+.live-card-category { margin: 0.1rem 0 0; color: #9147ff; font-size: 0.8rem; }

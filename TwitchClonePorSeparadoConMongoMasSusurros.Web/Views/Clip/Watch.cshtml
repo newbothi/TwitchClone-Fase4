@@ -1,0 +1,23 @@
+﻿@model TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Clip
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div style="max-width: 1000px; margin: 0 auto; padding: 2rem;">
+    <div style="background: #000; height: 400px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999; margin-bottom: 2rem; font-size: 3rem;">
+        📹 Video aquí
+    </div>
+
+    <div style="background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h1 style="margin: 0 0 0.5rem 0;">@Model.Title</h1>
+        <p style="margin: 0; color: #999; font-size: 0.9rem;">👁 @Model.Views vistas</p>
+
+        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #ddd;">
+            <a href="@Url.Action("Channel", "Clip", new { id = Model.ChannelId })"
+               style="color: #9147ff; text-decoration: none;">
+                ← Volver a clips
+            </a>
+        </div>
+    </div>
+</div>

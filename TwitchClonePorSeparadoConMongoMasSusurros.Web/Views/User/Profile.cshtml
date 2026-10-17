@@ -1,0 +1,437 @@
+﻿@using TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models
+@model TwitchClonePorSeparadoConMongoMasSusurros.Domain.DTOs.UserProfileDto
+
+@{
+    ViewData["Title"] = $"Perfil de {Model.DisplayUsername}";
+    bool isFollowing = Model.IsFollowedByCurrentUser;
+    bool isOwnProfile = ViewBag.IsOwnProfile;
+    var followers = ViewBag.Followers as List<AppUser> ?? new();
+    var following = ViewBag.Following as List<AppUser> ?? new();
+}
+
+<div class="profile-wrapper">
+
+    @if (!string.IsNullOrEmpty(Model.BannerUrl))
+    {
+        <div class="profile-banner">
+            <img src="@Model.BannerUrl" alt="Banner de @Model.DisplayUsername" />
+        </div>
+    }
+
+    <div class="profile-header">
+        <div class="profile-avatar-big">
+            @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+            {
+                <img src="@Model.AvatarUrl" alt="@Model.DisplayUsername" />
+            }
+            else
+            {
+                @Model.DisplayUsername[0].ToString().ToUpper()
+            }
+        </div>
+
+        <div class="profile-info">
+            <h1>@Model.DisplayUsername</h1>
+
+            @if (!string.IsNullOrEmpty(Model.Bio))
+            {
+                <p class="profile-bio">@Model.Bio</p>
+            }
+
+            <div class="profile-stats">
+                <span><strong>@Model.FollowerCount</strong> seguidores</span>
+                <span><strong>@Model.FollowingCount</strong> siguiendo</span>
+                @if (Model.Channel != null)
+                {
+                    <span>
+                        @if (Model.IsLive)
+                        {
+                            <span class="live-pill">🔴 EN VIVO</span>
+                        }
+                        else
+                        {
+                            <span style="color:#adadb8;">⚫ Offline</span>
+                        }
+                    </span>
+                }
+            </div>
+
+            <div class="profile-actions">
+                @if (!isOwnProfile && User.Identity!.IsAuthenticated)
+                {
+                    if (isFollowing)
+                    {
+                        <form asp-action="Unfollow" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="followedId" value="@Model.Id" />
+                            <input type="hidden" name="returnUrl" value="/User/Profile/@Model.DisplayUsername" />
+                            <button type="submit" class="btn-following">✓ Siguiendo</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="Follow" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="followedId" value="@Model.Id" />
+                            <input type="hidden" name="returnUrl" value="/User/Profile/@Model.DisplayUsername" />
+                            <button type="submit" class="btn-follow">+ Seguir</button>
+                        </form>
+                    }
+
+                    <a asp-controller="Whisper" asp-action="Conversation" asp-route-otherUserId="@Model.Id" class="btn-whisper">
+                        💬 Susurrar
+                    </a>
+                }
+
+                @if (Model.Channel != null)
+                {
+                    <a asp-controller="Channel" asp-action="Watch"
+                       asp-route-id="@Model.Channel.Id" class="btn-watch">
+                        📺 Ver canal
+                    </a>
+                }
+
+                @if (isOwnProfile)
+                {
+                    <a asp-controller="Channel" asp-action="Dashboard" class="btn-watch">
+                        ⚙️ Mi dashboard
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Channel != null)
+    {
+        <div class="profile-card">
+            <h2>📺 Canal</h2>
+            <div class="info-row">
+                <span class="info-label">Nombre</span>
+                <span class="info-value">@Model.Channel.Name</span>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Channel.Description))
+            {
+                <div class="info-row">
+                    <span class="info-label">Descripción</span>
+                    <span class="info-value">@Model.Channel.Description</span>
+                </div>
+            }
+        </div>
+    }
+
+    @if (Model.SocialLinks.Any())
+    {
+        <div class="profile-card">
+            <h2>🔗 Enlaces</h2>
+            <div class="social-links-grid">
+                @foreach (var link in Model.SocialLinks)
+                {
+                    <a href="@link.Url" target="_blank" rel="noopener noreferrer" class="social-link-chip">
+                        @link.Title
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
+    @if (followers.Any())
+    {
+        <div class="profile-card">
+            <h2>👥 Seguidores</h2>
+            <div class="users-grid">
+                @foreach (var follower in followers)
+                {
+                    <a asp-action="Profile" asp-route-username="@follower.UserName" class="user-chip">
+                        <div class="chip-avatar">@follower.DisplayUsername[0].ToString().ToUpper()</div>
+                        <span>@follower.DisplayUsername</span>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
+    @if (following.Any())
+    {
+        <div class="profile-card">
+            <h2>➡️ Siguiendo</h2>
+            <div class="users-grid">
+                @foreach (var followed in following)
+                {
+                    <a asp-action="Profile" asp-route-username="@followed.UserName" class="user-chip">
+                        <div class="chip-avatar">@followed.DisplayUsername[0].ToString().ToUpper()</div>
+                        <span>@followed.DisplayUsername</span>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
+</div>
+
+@section Styles {
+    <style>
+        .profile-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .profile-banner {
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: -3rem;
+            height: 180px;
+        }
+
+            .profile-banner img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+        .profile-header {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+            background: #18181b;
+            border: 1px solid #2a2a2e;
+            border-radius: 12px;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .profile-avatar-big {
+            width: 80px;
+            height: 80px;
+            background: #9147ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 2rem;
+            font-weight: 700;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+            .profile-avatar-big img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+        .profile-bio {
+            color: #adadb8;
+            font-size: 0.9rem;
+            margin: 0 0 1rem 0;
+            max-width: 500px;
+        }
+
+        .profile-info {
+            flex: 1;
+        }
+
+            .profile-info h1 {
+                color: #efeff1;
+                font-size: 1.5rem;
+                margin: 0 0 0.5rem;
+            }
+
+        .profile-stats {
+            display: flex;
+            gap: 1.5rem;
+            color: #adadb8;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+            .profile-stats strong {
+                color: #efeff1;
+            }
+
+        .profile-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-follow {
+            background: #9147ff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0.5rem 1.25rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .btn-following {
+            background: transparent;
+            color: #9147ff;
+            border: 1px solid #9147ff;
+            border-radius: 5px;
+            padding: 0.5rem 1.25rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .btn-whisper {
+            background: transparent;
+            color: #efeff1;
+            border: 1px solid #2a2a2e;
+            border-radius: 5px;
+            padding: 0.5rem 1.25rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+            .btn-whisper:hover {
+                border-color: #9147ff;
+                color: #9147ff;
+            }
+
+        .btn-watch {
+            background: #2a2a2e;
+            color: #efeff1;
+            border: none;
+            border-radius: 5px;
+            padding: 0.5rem 1.25rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .profile-card {
+            background: #18181b;
+            border: 1px solid #2a2a2e;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+            .profile-card h2 {
+                color: #efeff1;
+                font-size: 1rem;
+                margin: 0 0 1rem;
+                padding-bottom: 0.75rem;
+                border-bottom: 1px solid #2a2a2e;
+            }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #2a2a2e22;
+            font-size: 0.9rem;
+        }
+
+        .info-label {
+            color: #adadb8;
+        }
+
+        .info-value {
+            color: #efeff1;
+        }
+
+        .users-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .social-links-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+        }
+
+        .social-link-chip {
+            background: #0e0e10;
+            border: 1px solid #2a2a2e;
+            border-radius: 20px;
+            padding: 0.4rem 1rem;
+            text-decoration: none;
+            color: #9147ff;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: border-color 0.2s;
+        }
+
+            .social-link-chip:hover {
+                border-color: #9147ff;
+            }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #0e0e10;
+            border: 1px solid #2a2a2e;
+            border-radius: 20px;
+            padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+            text-decoration: none;
+            color: #efeff1;
+            font-size: 0.85rem;
+            transition: border-color 0.2s;
+        }
+
+            .user-chip:hover {
+                border-color: #9147ff;
+            }
+
+        .chip-avatar {
+            width: 24px;
+            height: 24px;
+            background: #9147ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .live-pill {
+            background: #e91916;
+            color: #fff;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/streamHub")
+        .withAutomaticReconnect()
+        .build();
+
+        connection.on("NewFollower", (username) => {
+        const toast = document.createElement("div");
+        toast.style.cssText = `
+        position:fixed; bottom:1.5rem; right:1.5rem;
+        background:#9147ff; color:#fff;
+        padding:0.75rem 1.25rem; border-radius:8px;
+        font-size:0.9rem; z-index:999;
+        `;
+        toast.textContent = `🎉 ¡${username} te empezó a seguir!`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+        });
+
+        connection.start();
+    </script>
+}

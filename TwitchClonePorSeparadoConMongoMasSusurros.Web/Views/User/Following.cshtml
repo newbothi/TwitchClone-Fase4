@@ -1,0 +1,27 @@
+﻿@model List<TwitchClonePorSeparadoConMongoMasSusurros.Domain.DTOs.ChannelDto>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/live-cards.css" asp-append-version="true" />
+}
+
+@{
+    ViewData["Title"] = "Canales que sigo";
+}
+
+<div style="max-width: 1100px; margin: 0 auto; padding: 2rem;">
+    <h1 style="margin-bottom: 1.5rem;">➡️ Canales que sigo en vivo</h1>
+
+    @if (Model == null || Model.Count == 0)
+    {
+        <p style="color: #999;">Ninguno de los canales que sigues está en vivo ahora mismo.</p>
+    }
+    else
+    {
+        <div class="live-grid">
+            @foreach (var channel in Model)
+            {
+                <partial name="_LiveChannelCard" model="channel" />
+            }
+        </div>
+    }
+</div>

@@ -1,0 +1,71 @@
+﻿@model List<TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Channel>
+@{
+    var category = ViewBag.Category as TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Category;
+    ViewData["Title"] = category?.Name ?? "Categoría";
+}
+
+<div style="max-width: 1000px; margin: 0 auto; padding: 2rem;">
+    @if (category?.ParentCategory != null)
+    {
+        <p style="margin: 0 0 0.35rem 0; font-size: 0.85rem;">
+            <a asp-controller="Category" asp-action="Detail" asp-route-id="@category.ParentCategory.Id" style="color:#9147ff; text-decoration:none;">
+                @category.ParentCategory.Name
+            </a>
+            <span style="color:#666;"> / </span>@category?.Name
+        </p>
+    }
+
+    <h1 style="margin: 0 0 0.5rem 0;">@category?.Name</h1>
+
+    @if (category?.CategoryTags != null && category.CategoryTags.Any())
+    {
+        <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom: 1rem;">
+            @foreach (var ct in category.CategoryTags)
+            {
+                <span style="background:#18181b; border:1px solid #2a2a2e; color:#9147ff; border-radius:12px; padding:0.25rem 0.75rem; font-size:0.8rem;">
+                    @ct.Tag?.Name
+                </span>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(category?.Description))
+    {
+        <p style="color:#adadb8; margin-bottom: 1.5rem;">@category.Description</p>
+    }
+
+    @if (category?.SubCategories != null && category.SubCategories.Any())
+    {
+        <div style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Explorar por juego / tema</h2>
+            <div style="display:flex; flex-wrap:wrap; gap:0.6rem;">
+                @foreach (var sub in category.SubCategories.OrderBy(s => s.Name))
+                {
+                    <a asp-controller="Category" asp-action="Detail" asp-route-id="@sub.Id"
+                       style="background:#18181b; border:1px solid #2a2a2e; color:#efeff1; text-decoration:none; border-radius:6px; padding:0.5rem 0.9rem; font-size:0.85rem;">
+                        @sub.Name
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
+    @if (Model == null || Model.Count == 0)
+    {
+        <p style="color: #999;">No hay canales en esta categoría todavía.</p>
+    }
+    else
+    {
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem;">
+            @foreach (var channel in Model)
+            {
+                <a asp-controller="Channel" asp-action="Watch" asp-route-id="@channel.Id" style="text-decoration: none; color: inherit;">
+                    <div style="border: 1px solid #333; border-radius: 8px; padding: 1rem;">
+                        <h3>@channel.Name</h3>
+                        <p style="color: #999;">@(channel.IsLive ? "🔴 En vivo" : "Desconectado")</p>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+</div>

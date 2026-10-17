@@ -1,0 +1,26 @@
+﻿@{
+    ViewData["Title"] = "Crear canal";
+}
+
+<div style="max-width: 500px; margin: 3rem auto; padding: 2rem;">
+    <h1>🎙️ Crea tu canal</h1>
+    <p style="color:#999;">Configura tu canal para empezar a transmitir.</p>
+
+    <form asp-controller="Channel" asp-action="Create" method="post" style="display: flex; flex-direction: column; gap: 1rem;">
+        @Html.AntiForgeryToken()
+
+        <div>
+            <label style="display:block; margin-bottom:0.35rem; color:#adadb8; font-size:0.85rem;">Nombre del canal</label>
+            <input name="name" style="width:100%; box-sizing:border-box; background:#0e0e10; border:1px solid #2a2a2e; color:#efeff1; padding:0.6rem 0.75rem; border-radius:6px;" placeholder="Nombre de tu canal" />
+        </div>
+
+        <div>
+            <label style="display:block; margin-bottom:0.35rem; color:#adadb8; font-size:0.85rem;">Descripción</label>
+            <textarea name="description" rows="3" style="width:100%; box-sizing:border-box; background:#0e0e10; border:1px solid #2a2a2e; color:#efeff1; padding:0.6rem 0.75rem; border-radius:6px; font-family:inherit;" placeholder="Cuéntale a tu audiencia de qué se trata tu canal"></textarea>
+        </div>
+
+        <button type="submit" style="background:#9147ff; color:#fff; border:none; padding:0.75rem; border-radius:6px; font-weight:700; cursor:pointer;">
+            Crear canal
+        </button>
+    </form>
+</div>

@@ -1,0 +1,35 @@
+﻿@{
+    ViewData["Title"] = "Donar";
+}
+
+<div style="max-width: 500px; margin: 3rem auto; padding: 2rem;">
+    <h1>💜 Donar a @ViewBag.Channel.Name</h1>
+    <p style="color: #999; margin-bottom: 2rem;">Tu saldo: <strong>@ViewBag.UserPoints</strong> puntos</p>
+
+    <form method="post" asp-action="Send" style="display: flex; flex-direction: column; gap: 1rem;">
+        @Html.AntiForgeryToken()
+
+        <input type="hidden" name="channelId" value="@ViewBag.Channel.Id" />
+
+        <div>
+            <label style="font-weight: 600;">Cantidad de puntos</label>
+            <input type="number" name="points" min="1" max="10000" required
+                   style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px;" />
+        </div>
+
+        <div>
+            <label style="font-weight: 600;">Mensaje (opcional)</label>
+            <textarea name="message" maxlength="200"
+                      style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; resize: vertical; min-height: 80px;"></textarea>
+            <span style="color: #999; font-size: 0.85rem;">Máximo 200 caracteres</span>
+        </div>
+
+        <button type="submit" style="background: #9147ff; color: #fff; border: none; padding: 0.8rem; border-radius: 4px; font-weight: 600; cursor: pointer;">
+            Donar
+        </button>
+    </form>
+
+    <a href="@Url.Action("MyPoints")" style="display: block; text-align: center; margin-top: 1rem; color: #9147ff; text-decoration: none;">
+        + Comprar puntos
+    </a>
+</div>

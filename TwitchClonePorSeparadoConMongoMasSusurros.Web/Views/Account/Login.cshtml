@@ -1,0 +1,50 @@
+﻿@model TwitchClonePorSeparadoConMongoMasSusurros.Domain.DTOs.LoginDto
+
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h1 class="auth-title">🎮 Iniciar sesión</h1>
+        <p class="auth-subtitle">Bienvenido de vuelta a TwitchClone</p>
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="auth-summary">
+                <div asp-validation-summary="ModelOnly"></div>
+            </div>
+        }
+
+        <form asp-controller="Account" asp-action="Login" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="auth-field">
+                <label asp-for="Email" class="auth-label"></label>
+                <input asp-for="Email" class="auth-input" placeholder="tu@email.com" autocomplete="email" />
+                <span asp-validation-for="Email" class="auth-error"></span>
+            </div>
+
+            <div class="auth-field">
+                <label asp-for="Password" class="auth-label"></label>
+                <input asp-for="Password" class="auth-input" placeholder="Tu contraseña" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="auth-error"></span>
+            </div>
+
+            <div class="auth-checkbox-row">
+                <input asp-for="RememberMe" type="checkbox" />
+                <label asp-for="RememberMe">Recordarme</label>
+            </div>
+
+            <button type="submit" class="auth-submit">Iniciar sesión</button>
+        </form>
+
+        <p class="auth-footer">
+            ¿No tienes cuenta? <a asp-controller="Account" asp-action="Register">Regístrate</a>
+        </p>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

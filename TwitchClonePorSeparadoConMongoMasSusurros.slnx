@@ -1,0 +1,12 @@
+<Solution>
+  <Project Path="TwitchClonePorSeparadoConMongoMasSusurros.Application/TwitchClonePorSeparadoConMongoMasSusurros.Application.csproj" />
+  <Project Path="TwitchClonePorSeparadoConMongoMasSusurros.Domain/TwitchClonePorSeparadoConMongoMasSusurros.Domain.csproj" />
+  <Project Path="TwitchClonePorSeparadoConMongoMasSusurros.Infrastructure/TwitchClonePorSeparadoConMongoMasSusurros.Infrastructure.csproj" />
+  <Project Path="TwitchClonePorSeparadoConMongoMasSusurros.LoadTest/TwitchClonePorSeparadoConMongoMasSusurros.LoadTest.csproj" />
+  <Project Path="TwitchClonePorSeparadoConMongoMasSusurros.Web/TwitchClonePorSeparadoConMongoMasSusurros.Web.csproj" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Common/TwitchClonePorSeparadoConMongoMasSusurros.Tests.Common.csproj" />
+    <Project Path="tests/Unit/TwitchClonePorSeparadoConMongoMasSusurros.Tests.Unit.csproj" />
+    <Project Path="tests/Integration/TwitchClonePorSeparadoConMongoMasSusurros.Tests.Integration.csproj" />
+  </Folder>
+</Solution>

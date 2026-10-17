@@ -1,0 +1,746 @@
+@using TwitchClonePorSeparadoConMongoMasSusurros.Domain.DTOs
+@using TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models
+@model TwitchClonePorSeparadoConMongoMasSusurros.Domain.DTOs.ChannelDto
+
+@{
+    ViewData["Title"] = "Mi canal - Dashboard";
+    var emotes = ViewBag.Emotes as List<Emote> ?? new();
+    var chatSettings = ViewBag.ChatSettings as ChatModerationSettingsDto;
+    var bannedUsers = ViewBag.BannedUsers as List<BannedUser> ?? new();
+    var channelRoles = ViewBag.ChannelRoles as List<ChannelRoleEntry> ?? new();
+    var autoModProvider = ViewBag.AutoModProvider as string;
+    var obsServer = (string)(ViewBag.ObsServer ?? "rtmp://localhost/live");
+    var obsKey = (string)(ViewBag.ObsStreamKey ?? "");
+    var slowOptions = new[] { 0, 3, 5, 10, 30, 60, 120 }.Append(chatSettings?.SlowModeSeconds ?? 0).Distinct().OrderBy(x => x).ToArray();
+}
+
+<div class="dashboard-wrapper">
+
+    <div class="dashboard-header">
+        <h1>🎙️ Mi canal</h1>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            @if (Model.IsLive)
+            {
+                <span class="live-pill">🔴 EN VIVO — @Model.ViewerCount viewers</span>
+                <a asp-controller="Channel" asp-action="Watch" asp-route-id="@Model.Id" class="btn-secondary">Ver mi stream</a>
+            }
+            else
+            {
+                <span class="offline-pill">⚫ OFFLINE</span>
+            }
+        </div>
+    </div>
+
+    <p style="color:#adadb8; font-size:0.85rem; margin-top:-1rem;">
+        💡 El estado EN VIVO lo detecta MediaMTX: abre OBS con el servidor y la clave de abajo
+        y haz clic en <strong>Iniciar transmisión</strong>. Tu canal pasa a EN VIVO solo, y vuelve
+        a OFFLINE apenas detienes la transmisión.
+    </p>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert-success">✅ @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert-error">❌ @TempData["Error"]</div>
+    }
+
+    <div class="dashboard-grid">
+
+        <!-- Fase 4: estadísticas (las calcula python/analytics; esta vista solo las lee) -->
+        <section class="dashboard-card analytics-card" id="analytics" aria-labelledby="analytics-title"
+                 data-url="@Url.Action("Analytics", "Channel")">
+            <div class="analytics-head">
+                <h2 id="analytics-title">📈 Estadísticas del canal</h2>
+                <div class="period-filter" role="group" aria-label="Período">
+                    <button type="button" data-days="7" aria-pressed="false">7 días</button>
+                    <button type="button" data-days="30" aria-pressed="true">30 días</button>
+                    <button type="button" data-days="90" aria-pressed="false">90 días</button>
+                </div>
+            </div>
+            <p class="analytics-status" id="analytics-status" role="status">Cargando estadísticas…</p>
+
+            <div id="analytics-body" hidden>
+                <div class="kpi-row" id="analytics-kpis"></div>
+
+                <div class="chart-grid">
+                    <figure class="chart-card">
+                        <figcaption><strong>Espectadores</strong><span>últimas 24 horas</span></figcaption>
+                        <div class="chart-box"><canvas id="chart-viewers" role="img" aria-label="Espectadores de las últimas 24 horas"></canvas></div>
+                    </figure>
+                    <figure class="chart-card">
+                        <figcaption><strong>Seguidores</strong><span id="trend-text">total al final de cada día</span></figcaption>
+                        <div class="chart-box"><canvas id="chart-followers" role="img" aria-label="Seguidores totales por día"></canvas></div>
+                    </figure>
+                    <figure class="chart-card">
+                        <figcaption><strong>Nuevos seguidores</strong><span>por día</span></figcaption>
+                        <div class="chart-box"><canvas id="chart-new-followers" role="img" aria-label="Nuevos seguidores por día"></canvas></div>
+                    </figure>
+                    <figure class="chart-card">
+                        <figcaption><strong>Promedio de espectadores</strong><span>por día con stream</span></figcaption>
+                        <div class="chart-box"><canvas id="chart-avg-viewers" role="img" aria-label="Promedio de espectadores por día"></canvas></div>
+                    </figure>
+                    <figure class="chart-card">
+                        <figcaption><strong>Mensajes en el chat</strong><span>por día</span></figcaption>
+                        <div class="chart-box"><canvas id="chart-chat" role="img" aria-label="Mensajes de chat por día"></canvas></div>
+                    </figure>
+                    <figure class="chart-card">
+                        <figcaption><strong>Mejores horas para transmitir</strong><span>espectadores promedio por hora (en morado, tus 3 mejores)</span></figcaption>
+                        <div class="chart-box"><canvas id="chart-hours" role="img" aria-label="Espectadores promedio por hora del día"></canvas></div>
+                    </figure>
+                </div>
+
+                <details class="analytics-table">
+                    <summary>Ver los datos como tabla</summary>
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr><th scope="col">Día</th><th scope="col">Seguidores</th><th scope="col">Nuevos</th><th scope="col">Minutos en vivo</th><th scope="col">Promedio</th><th scope="col">Pico</th><th scope="col">Mensajes</th><th scope="col">Personas en el chat</th></tr>
+                            </thead>
+                            <tbody id="analytics-rows"></tbody>
+                        </table>
+                    </div>
+                </details>
+            </div>
+            <p class="hint analytics-foot">
+                Los datos los junta el servicio <code>python/analytics</code> (una foto de los espectadores por minuto y
+                un resumen cada 5 minutos). Si no está corriendo, aquí no aparece nada nuevo.
+            </p>
+        </section>
+
+        <!-- Info del canal (ahora editable) -->
+        <div class="dashboard-card">
+            <h2>📺 Información del canal</h2>
+            <form asp-action="Update" method="post">
+                <div class="form-field">
+                    <label for="channel-title">Título del stream</label>
+                    <input id="channel-title" name="title" class="form-input" maxlength="100" required value="@Model.Name" />
+                </div>
+                <div class="form-field">
+                    <label for="channel-description">Descripción</label>
+                    <textarea id="channel-description" name="description" class="form-input" maxlength="500" rows="3">@Model.Description</textarea>
+                </div>
+                <button type="submit" class="btn-primary">Guardar</button>
+            </form>
+        </div>
+
+        <!-- Conexión con OBS -->
+        <div class="dashboard-card">
+            <h2>🔑 Conexión con OBS</h2>
+            <p class="hint" style="margin-bottom:1rem;">
+                OBS → Configuración → Emisión → Servicio: <strong>Personalizado</strong>. Pega estos dos valores.
+            </p>
+
+            <div class="form-field">
+                <label for="obs-server">Servidor</label>
+                <div class="streamkey-row">
+                    <input type="text" id="obs-server" value="@obsServer" class="streamkey-input" readonly />
+                    <button type="button" class="btn-secondary" data-copy="obs-server" title="Copiar servidor">📋</button>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label for="obs-key">Clave de transmisión</label>
+                <div class="streamkey-row">
+                    <input type="password" id="obs-key" value="@obsKey" class="streamkey-input" readonly />
+                    <button type="button" class="btn-secondary" id="toggle-key" title="Mostrar/ocultar">👁</button>
+                    <button type="button" class="btn-secondary" data-copy="obs-key" title="Copiar clave">📋</button>
+                </div>
+                <p class="hint">Es secreta: quien la tenga puede transmitir en tu canal. No la muestres en pantalla.</p>
+            </div>
+            <div id="copy-feedback" class="copy-feedback" aria-live="polite"></div>
+
+            <form asp-action="RegenerateKey" method="post" style="margin-top:0.5rem;"
+                  onsubmit="return confirm('¿Seguro? Si estás transmitiendo se cortará, y tendrás que pegar la nueva clave en OBS.');">
+                <button type="submit" class="btn-danger">🔄 Regenerar clave</button>
+            </form>
+        </div>
+
+        <!-- Configuración OBS recomendada -->
+        <div class="dashboard-card">
+            <h2>⚙️ Configuración OBS recomendada</h2>
+            <div class="obs-steps">
+                <div class="obs-step"><span class="step-num">1</span><span>Salida → Modo: <strong>Avanzado</strong></span></div>
+                <div class="obs-step"><span class="step-num">2</span><span>Control de frecuencia: <strong>CBR</strong>, 3000–6000 Kbps</span></div>
+                <div class="obs-step"><span class="step-num">3</span><span>Intervalo de fotogramas clave: <strong>2 s</strong></span></div>
+                <div class="obs-step"><span class="step-num">4</span><span>Codificador: NVENC/QuickSync si tienes GPU, si no x264 "veryfast"</span></div>
+                <div class="obs-step"><span class="step-num">5</span><span>Audio: AAC 160 Kbps, 48 kHz</span></div>
+            </div>
+            <ul class="obs-tips">
+                <li>El fotograma clave cada 2 s es lo que permite cortar el video en segmentos HLS cortos (menos latencia).</li>
+                <li>Sin OBS: <code>scripts/stream-de-prueba.ps1</code> transmite una señal de prueba con ffmpeg.</li>
+            </ul>
+        </div>
+
+        <!-- Stats -->
+        <div class="dashboard-card">
+            <h2>📊 Estadísticas</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="stat-num">@Model.ViewerCount</span>
+                    <span class="stat-label">Viewers ahora</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-num">@(Model.IsLive ? "🔴 Live" : "⚫ Off")</span>
+                    <span class="stat-label">Estado</span>
+                </div>
+            </div>
+            <div style="margin-top:1rem;">
+                <a asp-controller="Donation" asp-action="History" asp-route-channelId="@Model.Id"
+                   class="btn-secondary" style="display:inline-block;">
+                    💰 Ver donaciones
+                </a>
+            </div>
+        </div>
+
+        <!-- Configuración del chat -->
+        <div class="dashboard-card">
+            <h2>💬 Configuración del chat</h2>
+            @if (chatSettings == null)
+            {
+                <p class="hint">No se pudo leer la configuración del chat. ¿Está MongoDB corriendo?</p>
+            }
+            else
+            {
+                <form asp-action="ChatSettings" method="post">
+                    <div class="form-field">
+                        <label for="slow-mode">Modo lento (tiempo mínimo entre mensajes de cada usuario)</label>
+                        <select id="slow-mode" name="slowModeSeconds" class="form-input">
+                            @foreach (var seconds in slowOptions)
+                            {
+                                var label = seconds == 0 ? "Desactivado" : $"{seconds} segundos";
+                                @* if/else en vez de selected="@bool": <option> es un tag helper y así el HTML queda inequívoco *@
+                                if (seconds == chatSettings.SlowModeSeconds)
+                                {
+                                    <option value="@seconds" selected>@label</option>
+                                }
+                                else
+                                {
+                                    <option value="@seconds">@label</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <label class="check-row">
+                        <input type="checkbox" name="followersOnly" value="true" checked="@chatSettings.FollowersOnly" />
+                        Solo seguidores pueden escribir
+                    </label>
+
+                    <label class="check-row">
+                        <input type="checkbox" name="emoteOnly" value="true" checked="@chatSettings.EmoteOnly" />
+                        Solo emotes
+                    </label>
+
+                    <label class="check-row">
+                        <input type="checkbox" name="blockLinks" value="true" checked="@chatSettings.BlockLinks" />
+                        Bloquear enlaces (los VIP y moderadores sí pueden enviarlos)
+                    </label>
+
+                    <label class="check-row">
+                        <input type="checkbox" name="blockExcessiveCaps" value="true" checked="@chatSettings.BlockExcessiveCaps" />
+                        Bloquear exceso de mayúsculas
+                    </label>
+                    <p class="hint" style="margin:-0.6rem 0 0.9rem 1.6rem;">
+                        Más de 10 letras y más del 80 % en mayúsculas. Los emotes, las @@menciones y los enlaces no cuentan.
+                    </p>
+
+                    <label class="check-row">
+                        <input type="checkbox" name="blockRepeatedChars" value="true" checked="@chatSettings.BlockRepeatedChars" />
+                        Bloquear caracteres repetidos
+                    </label>
+                    <p class="hint" style="margin:-0.6rem 0 0.9rem 1.6rem;">
+                        7 o más iguales seguidos, como “holaaaaaaa” o “!!!!!!!”. Los números no cuentan. VIP y moderadores quedan exentos de ambos filtros.
+                    </p>
+
+                    <label class="check-row">
+                        <input type="checkbox" name="autoModEnabled" value="true" checked="@chatSettings.AutoModEnabled" />
+                        AutoMod con IA: retener mensajes ofensivos para revisión
+                    </label>
+                    <p class="hint" style="margin:-0.6rem 0 0.9rem 1.6rem;">
+                        @if (autoModProvider != null)
+                        {
+                            <text>Clasificador: @autoModProvider</text>
+                        }
+                        else
+                        {
+                            <text>No hay clasificador configurado (AutoMod:Provider en appsettings.json). Mientras tanto solo aplican las reglas.</text>
+                        }
+                    </p>
+
+                    <div class="form-field">
+                        <label for="banned-words">Palabras bloqueadas (separadas por coma)</label>
+                        <textarea id="banned-words" name="bannedWords" class="form-input" rows="3"
+                                  placeholder="spam, palabra2, palabra3">@string.Join(", ", chatSettings.BannedWords)</textarea>
+                        <p class="hint">Tú, tus moderadores y los admin no se ven afectados por estos filtros.</p>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="chat-rules">Reglas del chat (se muestran la primera vez que alguien va a escribir)</label>
+                        <textarea id="chat-rules" name="rules" class="form-input" rows="3" maxlength="1000"
+                                  placeholder="1. Respeta a todos. 2. Nada de spam. 3. Sin spoilers.">@chatSettings.Rules</textarea>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Guardar configuración</button>
+                </form>
+            }
+        </div>
+
+        <!-- Moderadores y VIP -->
+        <div class="dashboard-card">
+            <h2>⚔️ Moderadores y VIP</h2>
+            <p class="hint" style="margin-bottom:0.75rem;">
+                Los moderadores pueden silenciar, banear, fijar mensajes, crear encuestas y revisar AutoMod.
+                Los VIP no tienen modo lento y pueden enviar enlaces. También puedes usar /mod y /vip en el chat.
+            </p>
+            <form asp-action="AddRole" method="post" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+                <input name="displayName" class="form-input" placeholder="Nombre de usuario" required style="flex:1; min-width:140px;" />
+                <select name="role" class="form-input">
+                    <option value="moderator">Moderador</option>
+                    <option value="vip">VIP</option>
+                </select>
+                <button type="submit" class="btn-primary">Agregar</button>
+            </form>
+            @if (!channelRoles.Any())
+            {
+                <p class="hint">Todavía no tienes moderadores ni VIP.</p>
+            }
+            @foreach (var entry in channelRoles)
+            {
+                <div class="banned-row">
+                    <div>
+                        <div>@(entry.Role == ChannelRoleType.Moderator ? "⚔️" : "💎") @entry.DisplayName</div>
+                        <div class="banned-meta">@(entry.Role == ChannelRoleType.Moderator ? "Moderador" : "VIP")</div>
+                    </div>
+                    <form asp-action="RemoveRole" method="post">
+                        <input type="hidden" name="userId" value="@entry.UserId" />
+                        <button type="submit" class="btn-secondary">Quitar</button>
+                    </form>
+                </div>
+            }
+        </div>
+
+        <!-- Usuarios sancionados -->
+        <div class="dashboard-card">
+            <h2>⛔ Usuarios sancionados</h2>
+            <p class="hint" style="margin-bottom:0.75rem;">
+                Para sancionar, pasa el mouse sobre un mensaje en tu chat y usa ⏱ (10 min) o ⛔ (ban).
+            </p>
+            @if (!bannedUsers.Any())
+            {
+                <p class="hint">Nadie está baneado ni silenciado.</p>
+            }
+            @foreach (var ban in bannedUsers)
+            {
+                var expired = ban.ExpiresAt.HasValue && ban.ExpiresAt.Value <= DateTime.UtcNow;
+                if (expired) { continue; }
+                <div class="banned-row">
+                    <div>
+                        <div>@(ban.User?.DisplayUsername ?? "usuario")</div>
+                        <div class="banned-meta">
+                            @(ban.ExpiresAt.HasValue ? $"Silenciado hasta {ban.ExpiresAt.Value.ToLocalTime():dd-MM HH:mm}" : "Baneado")
+                            · @ban.Reason
+                        </div>
+                    </div>
+                    <form asp-action="Unban" method="post">
+                        <input type="hidden" name="userId" value="@ban.UserId" />
+                        <button type="submit" class="btn-secondary">Quitar sanción</button>
+                    </form>
+                </div>
+            }
+        </div>
+
+        <!-- Emotes del canal -->
+        <div class="dashboard-card" style="grid-column: 1 / -1;">
+            <h2>😄 Emotes del canal</h2>
+
+            @if (TempData["EmoteError"] != null)
+            {
+                <div style="color:#ff6b6b; font-size:0.85rem; margin-bottom:1rem;">❌ @TempData["EmoteError"]</div>
+            }
+
+            <form asp-action="UploadEmote" method="post" enctype="multipart/form-data"
+                  style="display:flex; gap:0.75rem; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap;">
+                <input type="text" name="code" placeholder="nombre_emote (sin :)" maxlength="25"
+                       pattern="[A-Za-z0-9_:]{2,27}" title="Letras, números o guion bajo (2 a 25)"
+                       class="form-input" required />
+                <input type="file" name="image" accept="image/png,image/gif,image/webp"
+                       style="color:#adadb8; font-size:0.85rem;" required />
+                <button type="submit" class="btn-primary">Subir emote</button>
+                <span style="color:#adadb8; font-size:0.75rem;">PNG, GIF o WEBP · máx 1 MB · ideal 112×112 px</span>
+            </form>
+
+            <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                @foreach (var emote in emotes)
+                {
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; background:#0e0e10; border:1px solid #2a2a2e; border-radius:8px; padding:0.75rem;">
+                        <img src="@emote.ImageUrl" alt="@emote.Code"
+                             style="width:48px; height:48px; object-fit:contain;" />
+                        <span style="color:#adadb8; font-size:0.75rem;">@emote.Code.Trim(':')</span>
+                        <form asp-action="DeleteEmote" method="post"
+                              onsubmit="return confirm('¿Eliminar emote?')">
+                            <input type="hidden" name="emoteId" value="@emote.Id" />
+                            <button type="submit"
+                                    style="background:transparent; color:#ff6b6b; border:none; cursor:pointer; font-size:0.75rem;">
+                                Eliminar
+                            </button>
+                        </form>
+                    </div>
+                }
+                @if (!emotes.Any())
+                {
+                    <p style="color:#adadb8; font-size:0.85rem;">No tienes emotes aún. ¡Sube el primero!</p>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .dashboard-wrapper {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+            .dashboard-header h1 {
+                color: #efeff1;
+                font-size: 1.5rem;
+                margin: 0;
+            }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .dashboard-card {
+            background: #18181b;
+            border: 1px solid #2a2a2e;
+            border-radius: 10px;
+            padding: 1.5rem;
+        }
+
+            .dashboard-card h2 {
+                color: #efeff1;
+                font-size: 1rem;
+                margin: 0 0 1.25rem;
+                padding-bottom: 0.75rem;
+                border-bottom: 1px solid #2a2a2e;
+            }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #2a2a2e22;
+            font-size: 0.9rem;
+        }
+
+        .info-label {
+            color: #adadb8;
+        }
+
+        .info-value {
+            color: #efeff1;
+        }
+
+        .streamkey-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .streamkey-input {
+            flex: 1;
+            background: #0e0e10;
+            border: 1px solid #2a2a2e;
+            border-radius: 5px;
+            padding: 0.5rem 0.75rem;
+            color: #efeff1;
+            font-size: 0.85rem;
+            font-family: monospace;
+        }
+
+        .obs-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .obs-step {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+            color: #adadb8;
+        }
+
+        .step-num {
+            width: 24px;
+            height: 24px;
+            background: #9147ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-box {
+            background: #0e0e10;
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .stat-num {
+            color: #9147ff;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            color: #adadb8;
+            font-size: 0.8rem;
+        }
+
+        .live-pill {
+            background: #e91916;
+            color: #fff;
+            padding: 0.3rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .offline-pill {
+            background: #2a2a2e;
+            color: #adadb8;
+            padding: 0.3rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .btn-secondary {
+            background: #2a2a2e;
+            color: #efeff1;
+            border: none;
+            border-radius: 5px;
+            padding: 0.4rem 0.9rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-decoration: none;
+        }
+
+        .btn-danger {
+            background: #e91916;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0.4rem 0.9rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            width: 100%;
+        }
+
+        .alert-success {
+            background: #00ff8822;
+            border: 1px solid #00ff8855;
+            border-radius: 6px;
+            color: #00ff88;
+            padding: 0.65rem 0.9rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+                .alert-error {
+            background: #ff6b6b22;
+            border: 1px solid #ff6b6b55;
+            border-radius: 6px;
+            color: #ff8a8a;
+            padding: 0.65rem 0.9rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            margin-bottom: 0.9rem;
+        }
+
+            .form-field label {
+                color: #adadb8;
+                font-size: 0.8rem;
+            }
+
+        .form-input {
+            background: #0e0e10;
+            border: 1px solid #2a2a2e;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            color: #efeff1;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+
+            .form-input:focus {
+                outline: none;
+                border-color: #9147ff;
+            }
+
+        .btn-primary {
+            background: #9147ff;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .hint {
+            color: #adadb8;
+            font-size: 0.78rem;
+            margin: 0.25rem 0 0;
+        }
+
+        .copy-feedback {
+            color: #3fb950;
+            font-size: 0.78rem;
+            min-height: 1rem;
+            margin-top: 0.35rem;
+        }
+
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #efeff1;
+            font-size: 0.85rem;
+            margin-bottom: 0.9rem;
+        }
+
+        .banned-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.55rem 0;
+            border-bottom: 1px solid #2a2a2e55;
+            font-size: 0.85rem;
+            color: #efeff1;
+        }
+
+        .banned-meta {
+            color: #adadb8;
+            font-size: 0.75rem;
+        }
+
+        .obs-tips {
+            margin: 1rem 0 0;
+            padding-left: 1.1rem;
+            color: #adadb8;
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+
+        /* ── Fase 4: estadísticas ─────────────────────────────── */
+        .analytics-card { grid-column: 1 / -1; }
+        .analytics-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+        .analytics-head h2 { margin: 0; border: none; padding: 0; }
+        .period-filter { display: inline-flex; gap: 0.25rem; background: #0e0e10; border: 1px solid #2a2a2e; border-radius: 6px; padding: 0.2rem; }
+        .period-filter button { background: transparent; border: none; color: #adadb8; padding: 0.3rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+        .period-filter button:hover { background: #ffffff0d; color: #efeff1; }
+        .period-filter button[aria-pressed="true"] { background: #2a2a2e; color: #efeff1; font-weight: 600; }
+        .analytics-status { color: #adadb8; font-size: 0.85rem; margin: 0.75rem 0 0; min-height: 1.2em; }
+        .analytics-status.warn { color: #f2c230; }
+        #analytics-body { transition: opacity 0.15s; }
+        #analytics-body.loading { opacity: 0.5; }
+        .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin: 1rem 0; }
+        .kpi { background: #0e0e10; border: 1px solid #2a2a2e; border-radius: 8px; padding: 0.75rem 0.9rem; }
+        .kpi-label { color: #adadb8; font-size: 0.78rem; display: block; }
+        .kpi-value { color: #efeff1; font-size: 1.6rem; font-weight: 600; display: block; margin-top: 0.15rem; }
+        .kpi-delta { font-size: 0.78rem; display: block; margin-top: 0.15rem; color: #adadb8; }
+        .kpi-delta.up { color: #3fcf6a; }
+        .kpi-delta.down { color: #ff7b7b; }
+        .chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+        .chart-card { margin: 0; background: #0e0e10; border: 1px solid #2a2a2e; border-radius: 8px; padding: 0.75rem 0.9rem 0.5rem; min-width: 0; }
+        .chart-card figcaption { display: flex; flex-direction: column; gap: 0.1rem; margin-bottom: 0.5rem; }
+        .chart-card figcaption strong { color: #efeff1; font-size: 0.9rem; }
+        .chart-card figcaption span { color: #adadb8; font-size: 0.75rem; }
+        .chart-box { position: relative; height: 210px; }
+        .analytics-table { margin-top: 0.9rem; color: #adadb8; font-size: 0.85rem; }
+        .analytics-table summary { cursor: pointer; }
+        .table-scroll { overflow-x: auto; margin-top: 0.5rem; }
+        .analytics-table table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+        .analytics-table th, .analytics-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid #2a2a2e; text-align: right; white-space: nowrap; }
+        .analytics-table th:first-child, .analytics-table td:first-child { text-align: left; }
+        .analytics-table th { color: #efeff1; font-weight: 600; }
+        .analytics-foot { margin: 0.75rem 0 0; }
+
+        @@media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="~/lib/chart.js/chart.umd.min.js" asp-append-version="true"></script>
+    <script src="~/js/dashboard-analytics.js" asp-append-version="true"></script>
+    <script>
+        (function () {
+            const feedback = document.getElementById("copy-feedback");
+            const keyInput = document.getElementById("obs-key");
+
+            document.getElementById("toggle-key")?.addEventListener("click", () => {
+                keyInput.type = keyInput.type === "password" ? "text" : "password";
+            });
+
+            document.querySelectorAll("[data-copy]").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    const input = document.getElementById(btn.dataset.copy);
+                    try {
+                        await navigator.clipboard.writeText(input.value);
+                        feedback.textContent = btn.dataset.copy === "obs-key" ? "Clave copiada ✔" : "Servidor copiado ✔";
+                    } catch {
+                        feedback.textContent = "No se pudo copiar: selecciona el texto y usa Ctrl+C.";
+                    }
+                    setTimeout(() => feedback.textContent = "", 2500);
+                });
+            });
+        })();
+    </script>
+}

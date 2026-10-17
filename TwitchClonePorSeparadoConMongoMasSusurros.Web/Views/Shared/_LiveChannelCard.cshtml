@@ -1,0 +1,28 @@
+@model TwitchClonePorSeparadoConMongoMasSusurros.Domain.DTOs.ChannelDto
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
+@{
+    // Miniatura generada por ThumbnailService (wwwroot/thumbnails/{id}.jpg); si todavía no hay, se muestra el ícono.
+    var thumbnail = TwitchClonePorSeparadoConMongoMasSusurros.Web.Simulation.ThumbnailService.UrlFor(Env, Model.Id);
+}
+<a asp-controller="Channel" asp-action="Watch" asp-route-id="@Model.Id" class="live-card">
+    <div class="live-card-thumb">
+        @if (thumbnail != null)
+        {
+            <img src="@thumbnail" alt="Vista previa de @Model.Name" loading="lazy" />
+        }
+        else
+        {
+            <span class="live-card-placeholder">📹</span>
+        }
+        @if (Model.IsLive)
+        {
+            <span class="live-card-badge">EN VIVO</span>
+        }
+        <span class="live-card-viewers">@Model.ViewerCount.ToString("N0") espectador@(Model.ViewerCount == 1 ? "" : "es")</span>
+    </div>
+    <div class="live-card-body">
+        <h3>@Model.Name</h3>
+        <p class="live-card-owner">@Model.DisplayUsername</p>
+        <p class="live-card-category">@(Model.CategoryName ?? "Sin categoría")</p>
+    </div>
+</a>

@@ -1,0 +1,27 @@
+﻿@model List<dynamic>
+
+@{
+    ViewData["Title"] = "Categorías";
+}
+
+<div style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+    <h1>🎮 Categorías</h1>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem;">
+        @foreach (var category in Model)
+        {
+            <a href="@Url.Action("Index", "Category", new { id = category.Id })"
+               style="text-decoration: none; color: #000;">
+                <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s;">
+                    <div style="background: #000; height: 150px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 2rem;">
+                        @category.IconUrl
+                    </div>
+                    <div style="padding: 1rem;">
+                        <h3 style="margin: 0 0 0.5rem 0;">@category.Name</h3>
+                        <p style="margin: 0; color: #666; font-size: 0.9rem;">@category.ChannelCount en vivo</p>
+                    </div>
+                </div>
+            </a>
+        }
+    </div>
+</div>

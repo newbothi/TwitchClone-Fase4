@@ -1,0 +1,37 @@
+﻿@model List<TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Donation>
+
+@{
+    ViewData["Title"] = "Historial de donaciones";
+}
+
+<div style="max-width: 1000px; margin: 0 auto; padding: 2rem;">
+    <h1>💜 Donaciones recibidas</h1>
+
+    @if (Model == null || Model.Count == 0)
+    {
+        <p style="color: #999;">No hay donaciones aún.</p>
+    }
+    else
+    {
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            @foreach (var donation in Model.OrderByDescending(d => d.CreatedAt))
+            {
+                <div style="background: #fff; border: 1px solid #ddd; border-radius: 8px; border-left: 4px solid #9147ff; padding: 1rem;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <div>
+                            <strong>@(donation.FromUser?.DisplayUsername ?? "Usuario")</strong>
+                            <span style="color: #9147ff; font-weight: 700; margin-left: 1rem;">💜 @donation.Amount puntos</span>
+                        </div>
+                        <span style="color: #999; font-size: 0.9rem;">@donation.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(donation.Message))
+                    {
+                        <p style="margin: 0.5rem 0 0 0; color: #666; font-style: italic;">
+                            "@donation.Message"
+                        </p>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

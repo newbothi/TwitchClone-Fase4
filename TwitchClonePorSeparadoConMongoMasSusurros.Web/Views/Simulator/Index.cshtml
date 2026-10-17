@@ -1,0 +1,216 @@
+@model TwitchClonePorSeparadoConMongoMasSusurros.Web.Models.SimulatorPageModel
+@{
+    ViewData["Title"] = "Simulador";
+    var defaultChannels = Math.Clamp(Model.Channels.Count(c => !c.OwnerIsSuspended), 1, 6);
+}
+
+@section Styles {
+    <style>
+        .sim-page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+        .sim-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+        .sim-head h1 { margin: 0; }
+        .sim-back { color: #9147ff; text-decoration: none; font-size: 0.9rem; }
+        .sim-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+        .sim-card { background: #18181b; border: 1px solid #2a2a2e; border-radius: 8px; padding: 1rem 1.1rem; }
+        .sim-card .label { margin: 0; color: #adadb8; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        .sim-card .value { margin: 0.3rem 0 0 0; font-size: 1.35rem; font-weight: 800; }
+        .sim-card .hint { margin: 0.35rem 0 0 0; color: #adadb8; font-size: 0.78rem; line-height: 1.35; word-break: break-word; }
+        .sim-ok { color: #3fb950; }
+        .sim-bad { color: #ff6b6b; }
+        .sim-warn { color: #e3b341; }
+        .sim-muted { color: #adadb8; }
+        .sim-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+        .sim-panel { background: #18181b; border: 1px solid #2a2a2e; border-radius: 8px; padding: 1.1rem 1.2rem; }
+        .sim-panel h2 { margin: 0 0 0.35rem 0; font-size: 1.05rem; }
+        .sim-panel p { margin: 0 0 0.9rem 0; color: #adadb8; font-size: 0.85rem; line-height: 1.45; }
+        .sim-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+        .sim-field label { display: block; color: #adadb8; font-size: 0.75rem; margin-bottom: 0.25rem; }
+        .sim-input, .sim-select { background: #0e0e10; border: 1px solid #2a2a2e; color: #efeff1; padding: 0.5rem 0.6rem; border-radius: 6px; font-size: 0.9rem; }
+        .sim-input { width: 96px; }
+        .sim-input.small { width: 74px; padding: 0.35rem 0.45rem; font-size: 0.82rem; }
+        .sim-select.small { padding: 0.35rem 0.4rem; font-size: 0.82rem; }
+        .sim-btn { background: #9147ff; color: #fff; border: none; border-radius: 6px; padding: 0.55rem 1rem; font-weight: 700; cursor: pointer; font-size: 0.88rem; }
+        .sim-btn:hover { background: #772ce8; }
+        .sim-btn:disabled { opacity: 0.5; cursor: default; }
+        .sim-btn.small { padding: 0.35rem 0.65rem; font-size: 0.8rem; }
+        .sim-btn.ghost { background: transparent; border: 1px solid #3a3a3d; color: #efeff1; }
+        .sim-btn.ghost:hover { border-color: #9147ff; }
+        .sim-btn.danger { background: transparent; border: 1px solid #ff6b6b; color: #ff6b6b; }
+        .sim-btn.danger:hover { background: rgba(255, 107, 107, 0.1); }
+        .sim-check { display: flex; align-items: center; gap: 0.4rem; color: #efeff1; font-size: 0.85rem; padding-bottom: 0.45rem; }
+        .sim-toast { min-height: 1.4rem; margin: 0 0 1rem 0; font-size: 0.88rem; }
+        .sim-table-wrap { overflow-x: auto; border: 1px solid #2a2a2e; border-radius: 8px; }
+        .sim-table { width: 100%; border-collapse: collapse; background: #18181b; min-width: 980px; }
+        .sim-table th { background: #0e0e10; text-align: left; padding: 0.65rem 0.85rem; font-size: 0.75rem; color: #adadb8; text-transform: uppercase; letter-spacing: 0.04em; }
+        .sim-table td { padding: 0.75rem 0.85rem; border-top: 1px solid #2a2a2e; vertical-align: top; font-size: 0.85rem; }
+        .sim-table .name { font-weight: 700; }
+        .sim-table .sub { color: #adadb8; font-size: 0.78rem; margin-top: 0.15rem; }
+        .sim-pill { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+        .sim-pill.live { background: #eb0400; color: #fff; }
+        .sim-pill.off { background: #2a2a2e; color: #adadb8; }
+        .sim-pill.run { background: rgba(63, 185, 80, 0.15); color: #3fb950; }
+        .sim-pill.wait { background: rgba(227, 179, 65, 0.15); color: #e3b341; }
+        .sim-pill.err { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+        .sim-stats { color: #adadb8; font-size: 0.78rem; margin-top: 0.3rem; line-height: 1.45; }
+        .sim-stats strong { color: #efeff1; }
+        .sim-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-top: 0.45rem; }
+        .sim-error { color: #ff6b6b; font-size: 0.76rem; margin-top: 0.3rem; word-break: break-word; }
+        .sim-notes { color: #adadb8; font-size: 0.82rem; line-height: 1.55; margin-top: 1.25rem; }
+        .sim-notes code { background: #0e0e10; border: 1px solid #2a2a2e; padding: 0 0.3rem; border-radius: 4px; color: #efeff1; }
+    </style>
+}
+
+<div class="sim-page">
+    @Html.AntiForgeryToken()
+
+    <div class="sim-head">
+        <h1>🤖 Simulador</h1>
+        <a asp-controller="Admin" asp-action="Index" class="sim-back">&larr; Volver al panel</a>
+    </div>
+
+    <div class="sim-cards">
+        <div class="sim-card">
+            <p class="label">Cuentas de bots</p>
+            <p class="value" id="sim-bots">—</p>
+            <p class="hint" id="sim-bots-hint">Usuarios reales (rol Viewer) que no pueden iniciar sesión.</p>
+        </div>
+        <div class="sim-card">
+            <p class="label">ffmpeg</p>
+            <p class="value" id="sim-ffmpeg">—</p>
+            <p class="hint" id="sim-ffmpeg-hint">Para streams simulados y miniaturas.</p>
+        </div>
+        <div class="sim-card">
+            <p class="label">Mensajes con IA</p>
+            <p class="value @(Model.Settings.UseAi ? "sim-ok" : "sim-muted")">@(Model.Settings.UseAi ? "Ollama" : "Plantillas")</p>
+            <p class="hint">
+                @if (Model.Settings.UseAi)
+                {
+                    <text>Los bots piden frases a Ollama según el título, la categoría y lo que se está hablando.</text>
+                }
+                else
+                {
+                    <text>Activa <code>Simulation:UseAi</code> para que Ollama escriba mensajes con contexto.</text>
+                }
+            </p>
+        </div>
+        <div class="sim-card">
+            <p class="label">Tarea en curso</p>
+            <p class="value" id="sim-job" style="font-size:1rem;">Ninguna</p>
+            <p class="hint" id="sim-job-hint"></p>
+        </div>
+    </div>
+
+    <p class="sim-toast" id="sim-toast"></p>
+
+    <div class="sim-panels">
+        <div class="sim-panel">
+            <h2>1. Cuentas de bots</h2>
+            <p>Se crean una sola vez y quedan en la base. Cada bot está en un canal a la vez, así que necesitas tantos como viewers quieras simular (máximo @Model.MaxBots).</p>
+            <div class="sim-row">
+                <div class="sim-field">
+                    <label for="bots-count">Cantidad total</label>
+                    <input class="sim-input" type="number" id="bots-count" min="1" max="@Model.MaxBots" value="@Math.Min(500, Model.MaxBots)" />
+                </div>
+                <button type="button" class="sim-btn" id="btn-create-bots">Crear bots</button>
+            </div>
+        </div>
+
+        <div class="sim-panel">
+            <h2>2. Simulación completa</h2>
+            <p>Pone varios canales en vivo (video con ffmpeg → MediaMTX) y reparte la audiencia como en Twitch: pocos canales grandes y muchos chicos.</p>
+            <div class="sim-row">
+                <div class="sim-field">
+                    <label for="full-channels">Canales</label>
+                    <input class="sim-input" type="number" id="full-channels" min="1" max="50" value="@defaultChannels" />
+                </div>
+                <div class="sim-field">
+                    <label for="full-viewers">Viewers en total</label>
+                    <input class="sim-input" type="number" id="full-viewers" min="1" max="@Model.MaxBots" value="@Math.Min(500, Model.MaxBots)" />
+                </div>
+                <div class="sim-field">
+                    <label for="full-activity">Actividad del chat</label>
+                    <select class="sim-select" id="full-activity">
+                        <option value="50">Tranquilo</option>
+                        <option value="100" selected>Normal</option>
+                        <option value="200">Movido</option>
+                        <option value="400">Caótico</option>
+                    </select>
+                </div>
+                <label class="sim-check"><input type="checkbox" id="full-video" checked /> Con video</label>
+            </div>
+            <div class="sim-row" style="margin-top:0.7rem;">
+                <button type="button" class="sim-btn" id="btn-start-full">Iniciar simulación</button>
+                <button type="button" class="sim-btn danger" id="btn-stop-all">Detener todo</button>
+            </div>
+        </div>
+    </div>
+
+    <h2 style="font-size:1.05rem; margin:0 0 0.6rem 0;">3. Canal por canal</h2>
+    <div class="sim-table-wrap">
+        <table class="sim-table">
+            <thead>
+                <tr>
+                    <th>Canal</th>
+                    <th>Estado</th>
+                    <th>Video simulado</th>
+                    <th>Chat simulado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var channel in Model.Channels)
+                {
+                    <tr data-channel="@channel.Id">
+                        <td>
+                            <div class="name">@channel.Name</div>
+                            <div class="sub">@channel.OwnerDisplayName · @(channel.CategoryName ?? "Sin categoría")</div>
+                            <div class="sub"><a asp-controller="Channel" asp-action="Watch" asp-route-id="@channel.Id" target="_blank" style="color:#9147ff; text-decoration:none;">Abrir canal ↗</a></div>
+                        </td>
+                        <td>
+                            <span class="sim-pill off" data-field="live">@(channel.IsLive ? "EN VIVO" : "Offline")</span>
+                            <div class="sim-stats"><span data-field="viewers">@channel.ViewerCount</span> viewers</div>
+                            @if (channel.OwnerIsSuspended)
+                            {
+                                <div class="sim-error">Dueño suspendido</div>
+                            }
+                        </td>
+                        <td>
+                            <span class="sim-pill off" data-field="stream-state">Apagado</span>
+                            <div class="sim-stats" data-field="stream-info"></div>
+                            <div class="sim-error" data-field="stream-error"></div>
+                            <div class="sim-actions">
+                                <button type="button" class="sim-btn small" data-action="start-stream">Transmitir</button>
+                                <button type="button" class="sim-btn small ghost" data-action="stop-stream">Detener</button>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="sim-pill off" data-field="chat-state">Apagado</span>
+                            <div class="sim-stats" data-field="chat-info"></div>
+                            <div class="sim-error" data-field="chat-error"></div>
+                            <div class="sim-actions">
+                                <input class="sim-input small" type="number" min="0" max="@Model.MaxBots" value="50" data-input="viewers" title="Viewers" aria-label="Viewers" />
+                                <select class="sim-select small" data-input="activity" title="Actividad" aria-label="Actividad">
+                                    <option value="50">Tranquilo</option>
+                                    <option value="100" selected>Normal</option>
+                                    <option value="200">Movido</option>
+                                    <option value="400">Caótico</option>
+                                </select>
+                                <button type="button" class="sim-btn small" data-action="start-chat">Aplicar</button>
+                                <button type="button" class="sim-btn small ghost" data-action="stop-chat">Detener</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="sim-notes">
+        <p><strong>Cómo funciona.</strong> Los bots son usuarios de verdad: sus mensajes pasan por el mismo filtro que los tuyos (modo lento, palabras bloqueadas, AutoMod, bans), cuentan en el contador de viewers, ganan puntos, siguen el canal, donan, votan encuestas y se van de raid con <code>/raid</code>. Responden cuando los nombras con <code>@@nombre</code>, saludan si saludas y se suman a las "olas" de emotes.</p>
+        <p><strong>Video.</strong> Cada canal transmite con ffmpeg a <code>@Model.IngestUrl</code> usando su clave, igual que OBS (MediaMTX tiene que estar corriendo). Si configuras <code>Simulation:VideosFolder</code> con archivos .mp4, se transmiten en bucle; si no, se usa una señal generada con el nombre del canal y la hora. Calidad: <code>@Model.Settings.StreamResolution</code> a @Model.Settings.StreamFps fps, @Model.Settings.StreamBitrateKbps kbps.</p>
+        <p><strong>Prueba de carga.</strong> Para medir cuántos usuarios aguanta el chat usa el proyecto <code>TwitchClonePorSeparadoConMongoMasSusurros.LoadTest</code> (ver README).</p>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/simulator.js" asp-append-version="true"></script>
+}

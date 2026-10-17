@@ -1,0 +1,72 @@
+﻿@model TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Category
+
+@{
+    ViewData["Title"] = "Nueva categoría";
+}
+
+<div style="max-width: 500px; margin: 3rem auto; padding: 2rem;">
+    <h1>🗂️ Nueva categoría</h1>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div asp-validation-summary="ModelOnly" style="color:#ff6b6b; margin-bottom:1rem;"></div>
+    }
+
+    <form asp-controller="Category" asp-action="Create" method="post" style="display: flex; flex-direction: column; gap: 1rem;">
+        @Html.AntiForgeryToken()
+
+        <div>
+            <label asp-for="ParentCategoryId" style="display:block; margin-bottom:0.35rem; color:#adadb8; font-size:0.85rem;">Categoría padre (opcional)</label>
+            <select asp-for="ParentCategoryId" style="width:100%; box-sizing:border-box; background:#0e0e10; border:1px solid #2a2a2e; color:#efeff1; padding:0.6rem 0.75rem; border-radius:6px;">
+                <option value="">— Es una categoría de primer nivel —</option>
+                @foreach (var root in (ViewBag.RootCategories as List<TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Category>) ?? new())
+                {
+                    <option value="@root.Id">@root.Name</option>
+                }
+            </select>
+            <p style="color:#666; font-size:0.75rem; margin:0.35rem 0 0 0;">
+                Si eliges una categoría padre, esta nueva categoría será una sub-categoría suya
+                (ej. "Street Fighter 6" dentro de "Videojuegos") y no aparecerá en el registro de Streamers.
+            </p>
+        </div>
+
+        <div>
+            <label asp-for="Name" style="display:block; margin-bottom:0.35rem; color:#adadb8; font-size:0.85rem;"></label>
+            <input asp-for="Name" style="width:100%; box-sizing:border-box; background:#0e0e10; border:1px solid #2a2a2e; color:#efeff1; padding:0.6rem 0.75rem; border-radius:6px;" />
+            <span asp-validation-for="Name" style="color:#ff6b6b; font-size:0.8rem;"></span>
+        </div>
+
+        <div>
+            <label asp-for="Description" style="display:block; margin-bottom:0.35rem; color:#adadb8; font-size:0.85rem;"></label>
+            <textarea asp-for="Description" rows="3" style="width:100%; box-sizing:border-box; background:#0e0e10; border:1px solid #2a2a2e; color:#efeff1; padding:0.6rem 0.75rem; border-radius:6px; font-family:inherit;"></textarea>
+            <span asp-validation-for="Description" style="color:#ff6b6b; font-size:0.8rem;"></span>
+        </div>
+
+        <div>
+            <label asp-for="ImageUrl" style="display:block; margin-bottom:0.35rem; color:#adadb8; font-size:0.85rem;">URL de imagen (opcional)</label>
+            <input asp-for="ImageUrl" style="width:100%; box-sizing:border-box; background:#0e0e10; border:1px solid #2a2a2e; color:#efeff1; padding:0.6rem 0.75rem; border-radius:6px;" />
+            <span asp-validation-for="ImageUrl" style="color:#ff6b6b; font-size:0.8rem;"></span>
+        </div>
+
+        <div>
+            <label style="display:block; margin-bottom:0.5rem; color:#adadb8; font-size:0.85rem;">Tags asociados</label>
+            <div style="display:flex; flex-wrap:wrap; gap:0.6rem;">
+                @foreach (var tag in (ViewBag.Tags as List<TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Tag>) ?? new())
+                {
+                    <label style="display:flex; align-items:center; gap:0.35rem; background:#0e0e10; border:1px solid #2a2a2e; border-radius:6px; padding:0.4rem 0.7rem; font-size:0.85rem; cursor:pointer;">
+                        <input type="checkbox" name="tagIds" value="@tag.Id" />
+                        @tag.Name
+                    </label>
+                }
+            </div>
+        </div>
+
+        <button type="submit" style="background:#9147ff; color:#fff; border:none; padding:0.75rem; border-radius:6px; font-weight:700; cursor:pointer;">
+            Crear categoría
+        </button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

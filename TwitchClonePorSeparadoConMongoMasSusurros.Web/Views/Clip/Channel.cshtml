@@ -1,0 +1,32 @@
+﻿@model List<TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Clip>
+
+@{
+    ViewData["Title"] = "Clips";
+}
+
+<div style="max-width: 1000px; margin: 0 auto; padding: 2rem;">
+    <h1>🎬 Clips del canal</h1>
+
+    @if (Model == null || Model.Count == 0)
+    {
+        <p style="color: #999;">No hay clips aún.</p>
+    }
+    else
+    {
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+            @foreach (var clip in Model)
+            {
+                <div style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s;"
+                     onclick="location.href='@Url.Action("Watch", "Clip", new { id = clip.Id })'">
+                    <div style="background: #000; height: 160px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 2rem;">
+                        📹
+                    </div>
+                    <div style="padding: 1rem;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #333;">@clip.Title</h3>
+                        <p style="margin: 0; color: #999; font-size: 0.9rem;">👁 @clip.Views vistas</p>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

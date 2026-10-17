@@ -1,0 +1,89 @@
+﻿@model TwitchClonePorSeparadoConMongoMasSusurros.Domain.DTOs.RegisterDto
+
+@{
+    ViewData["Title"] = "Crear cuenta";
+}
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h1 class="auth-title">🎮 Crear cuenta</h1>
+        <p class="auth-subtitle">Únete a la comunidad de TwitchClone</p>
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="auth-summary">
+                <div asp-validation-summary="ModelOnly"></div>
+            </div>
+        }
+
+        <form asp-controller="Account" asp-action="Register" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="auth-field">
+                <label asp-for="Email" class="auth-label"></label>
+                <input asp-for="Email" class="auth-input" placeholder="tu@email.com" autocomplete="email" />
+                <span asp-validation-for="Email" class="auth-error"></span>
+            </div>
+
+            <div class="auth-field">
+                <label asp-for="DisplayUsername" class="auth-label"></label>
+                <input asp-for="DisplayUsername" class="auth-input" placeholder="Nombre de usuario" autocomplete="username" />
+                <span asp-validation-for="DisplayUsername" class="auth-error"></span>
+            </div>
+
+            <div class="auth-field">
+                <label asp-for="Password" class="auth-label"></label>
+                <input asp-for="Password" class="auth-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="auth-error"></span>
+            </div>
+
+            <div class="auth-field">
+                <label asp-for="ConfirmPassword" class="auth-label"></label>
+                <input asp-for="ConfirmPassword" class="auth-input" placeholder="Repite tu contraseña" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="auth-error"></span>
+            </div>
+
+            <div class="auth-field">
+                <label asp-for="Role" class="auth-label">¿Cómo quieres usar TwitchClone?</label>
+                <select asp-for="Role" id="role-select" class="auth-select">
+                    <option value="Viewer">Viewer — solo quiero ver streams</option>
+                    <option value="Streamer">Streamer — quiero transmitir</option>
+                </select>
+                <span asp-validation-for="Role" class="auth-error"></span>
+            </div>
+
+            <div class="auth-field" id="category-field" style="display:none;">
+                <label asp-for="CategoryId" class="auth-label">Categoría de tu stream</label>
+                <select asp-for="CategoryId" class="auth-select">
+                    <option value="">Selecciona una categoría</option>
+                    @foreach (var category in (ViewBag.Categories as List<TwitchClonePorSeparadoConMongoMasSusurros.Domain.Models.Category>) ?? new())
+                    {
+                        <option value="@category.Id">@category.Name</option>
+                    }
+                </select>
+                <span asp-validation-for="CategoryId" class="auth-error"></span>
+            </div>
+
+            <button type="submit" class="auth-submit">Crear cuenta</button>
+        </form>
+
+        <p class="auth-footer">
+            ¿Ya tienes cuenta? <a asp-controller="Account" asp-action="Login">Inicia sesión</a>
+        </p>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const roleSelect = document.getElementById('role-select');
+        const categoryField = document.getElementById('category-field');
+
+        function toggleCategoryField() {
+            categoryField.style.display = roleSelect.value === 'Streamer' ? 'block' : 'none';
+        }
+
+        roleSelect.addEventListener('change', toggleCategoryField);
+        toggleCategoryField();
+    </script>
+}

@@ -1,0 +1,136 @@
+/* Estilos para Login / Register / AccessDenied */
+
+.auth-wrapper {
+    min-height: calc(100vh - 50px - 70px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.auth-card {
+    background: #18181b;
+    border: 1px solid #2a2a2e;
+    border-radius: 10px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-title {
+    color: #efeff1;
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0 0 0.35rem 0;
+    text-align: center;
+}
+
+.auth-subtitle {
+    color: #adadb8;
+    font-size: 0.85rem;
+    text-align: center;
+    margin: 0 0 1.75rem 0;
+}
+
+.auth-field {
+    margin-bottom: 1.1rem;
+}
+
+.auth-label {
+    display: block;
+    color: #adadb8;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.auth-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: #0e0e10;
+    border: 1px solid #2a2a2e;
+    color: #efeff1;
+    padding: 0.65rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.auth-input:focus {
+    outline: none;
+    border-color: #9147ff;
+}
+
+.auth-select {
+    width: 100%;
+    box-sizing: border-box;
+    background: #0e0e10;
+    border: 1px solid #2a2a2e;
+    color: #efeff1;
+    padding: 0.65rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.auth-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.auth-checkbox-row label {
+    color: #adadb8;
+    font-size: 0.85rem;
+}
+
+.auth-error {
+    color: #ff6b6b;
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+}
+
+.auth-summary {
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid #ff6b6b;
+    color: #ff6b6b;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+}
+
+.auth-submit {
+    width: 100%;
+    background: #9147ff;
+    color: #fff;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.auth-submit:hover {
+    background: #7d2ff5;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.85rem;
+    color: #adadb8;
+}
+
+.auth-footer a {
+    color: #9147ff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}

@@ -1,0 +1,263 @@
+# Control de calidad automático: compila y corre TODAS las pruebas en cada push y en
+# cada pull request. Si una prueba falla, el commit queda marcado en rojo en GitHub.
+#
+# Cuatro trabajos que corren en paralelo:
+#   pruebas         C#: unitarias + integración con la plataforma en memoria (sin bases de datos).
+#   python          pytest de python/automod y python/analytics (sin bases de datos).
+#   automod-real    la app C# conversando con el AutoMod Python de verdad (categoría ServiciosPython).
+#   bd-real         las consultas SQL de la Fase 4 contra un SQL Server 2022 de verdad
+#                   (pytest -m sqlserver + categoría SqlServer de C#).
+name: Pruebas
+
+on:
+  push:
+    branches: [ "main", "master", "develop", "fase-*" ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    name: Compilar y probar
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restaurar paquetes NuGet
+        run: dotnet restore TwitchClonePorSeparadoConMongoMasSusurros.slnx
+
+      - name: Compilar
+        run: dotnet build TwitchClonePorSeparadoConMongoMasSusurros.slnx --configuration Release --no-restore
+
+      - name: Pruebas unitarias
+        run: >
+          dotnet test tests/Unit
+          --configuration Release --no-build
+          --logger "trx;LogFileName=unitarias.trx"
+          --logger "console;verbosity=normal"
+          --collect:"XPlat Code Coverage"
+          --results-directory resultados-pruebas
+
+      - name: Pruebas de integración
+        if: success() || failure()
+        run: >
+          dotnet test tests/Integration
+          --configuration Release --no-build
+          --logger "trx;LogFileName=integracion.trx"
+          --logger "console;verbosity=normal"
+          --collect:"XPlat Code Coverage"
+          --results-directory resultados-pruebas
+
+      - name: Resumen de cobertura
+        if: success() || failure()
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: resultados-pruebas/**/coverage.cobertura.xml
+          format: markdown
+          output: file
+        continue-on-error: true
+
+      - name: Publicar resumen en la página del run
+        if: success() || failure()
+        run: |
+          if [ -f code-coverage-results.md ]; then
+            echo "## Cobertura de código" >> "$GITHUB_STEP_SUMMARY"
+            cat code-coverage-results.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Guardar resultados (trx + cobertura)
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-pruebas
+          path: resultados-pruebas
+          retention-days: 14
+
+  python:
+    name: Python (${{ matrix.servicio }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio: [ automod, analytics ]
+    defaults:
+      run:
+        working-directory: python/${{ matrix.servicio }}
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: python/${{ matrix.servicio }}/requirements*.txt
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: pytest
+        run: python -m pytest -m "not sqlserver" --junitxml=pytest-${{ matrix.servicio }}.xml
+
+      - name: Guardar resultados
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-${{ matrix.servicio }}
+          path: python/${{ matrix.servicio }}/pytest-${{ matrix.servicio }}.xml
+          retention-days: 14
+
+  automod-real:
+    name: C# + AutoMod Python real
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      AUTOMOD_DATA_DIR: ${{ github.workspace }}/automod-datos
+      PRUEBAS_AUTOMOD_URL: http://127.0.0.1:8001
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Instalar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: python/automod/requirements.txt
+
+      - name: Iniciar python/automod en segundo plano
+        working-directory: python/automod
+        run: |
+          pip install -r requirements.txt
+          nohup python -m automod_service > "$RUNNER_TEMP/automod.log" 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:8001/health > /dev/null; then echo "AutoMod listo"; exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/automod.log"; exit 1
+
+      - name: Compilar
+        run: dotnet build tests/Integration --configuration Release
+
+      - name: Pruebas con el servicio real
+        run: >
+          dotnet test tests/Integration
+          --configuration Release --no-build
+          --filter TestCategory=ServiciosPython
+          --logger "console;verbosity=normal"
+
+      - name: Log del servicio
+        if: success() || failure()
+        run: cat "$RUNNER_TEMP/automod.log"
+
+  bd-real:
+    name: SQL Server real
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      # Contraseña de un contenedor que vive solo durante el run: se genera en cada ejecución.
+      SA_PASSWORD: Ci-${{ github.run_id }}-${{ github.run_attempt }}!Aa
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: Ci-${{ github.run_id }}-${{ github.run_attempt }}!Aa
+        ports:
+          - 1433:1433
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Instalar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: python/analytics/requirements*.txt
+
+      - name: Driver ODBC 18 (si falta)
+        run: |
+          if odbcinst -q -d 2>/dev/null | grep -q "ODBC Driver 18 for SQL Server"; then
+            echo "Ya está instalado"; exit 0
+          fi
+          version=$(. /etc/os-release && echo "$VERSION_ID")
+          curl -sSL -o packages-microsoft-prod.deb "https://packages.microsoft.com/config/ubuntu/$version/packages-microsoft-prod.deb"
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
+
+      - name: Instalar dependencias de analytics
+        working-directory: python/analytics
+        run: pip install -r requirements-dev.txt
+
+      - name: Esperar a que SQL Server acepte conexiones
+        env:
+          ANALYTICS_TEST_SQL: DRIVER={ODBC Driver 18 for SQL Server};SERVER=localhost,1433;UID=sa;PWD=${{ env.SA_PASSWORD }};TrustServerCertificate=yes
+        run: |
+          python - <<'EOF'
+          import os, time, pyodbc
+          ultimo = None
+          for intento in range(90):
+              try:
+                  pyodbc.connect(os.environ["ANALYTICS_TEST_SQL"] + ";DATABASE=master", timeout=3).close()
+                  print("SQL Server listo"); break
+              except pyodbc.Error as error:
+                  ultimo = error
+                  time.sleep(2)
+          else:
+              raise SystemExit(f"SQL Server no respondió: {ultimo}")
+          EOF
+
+      - name: pytest -m sqlserver (ETL y API de analytics)
+        working-directory: python/analytics
+        env:
+          ANALYTICS_TEST_SQL: DRIVER={ODBC Driver 18 for SQL Server};SERVER=localhost,1433;UID=sa;PWD=${{ env.SA_PASSWORD }};TrustServerCertificate=yes
+        run: python -m pytest -m sqlserver -v
+
+      - name: C# categoría SqlServer (consultas Dapper del Dashboard)
+        if: success() || failure()
+        env:
+          PRUEBAS_SQLSERVER: Server=localhost,1433;User Id=sa;Password=${{ env.SA_PASSWORD }};TrustServerCertificate=True;
+        run: >
+          dotnet test tests/Integration
+          --configuration Release
+          --filter TestCategory=SqlServer
+          --logger "console;verbosity=normal"
